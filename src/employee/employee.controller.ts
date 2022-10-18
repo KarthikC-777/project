@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Post, Req, Res } from '@nestjs/common';
 import { EmployeeService } from './employee.service';
 import { EmployeeDto } from './EmployeeDto';
 import { LeaveDto } from './LeaveDto';
@@ -33,5 +33,12 @@ export class EmployeeController {
     } catch (err) {
       return err;
     }
+  }
+  @Get('checkLeaveStatus')
+  public async checkLeaveStatus(@Res() res, @Req() req) {
+    res.status(200).json({
+      message: 'Details',
+      result: await this.employeeService.checkLeaveStatus(req),
+    });
   }
 }

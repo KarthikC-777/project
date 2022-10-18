@@ -1,11 +1,7 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import {
-  employeeDocument,
-  leaveDocument,
-  employeeSchema,
-} from '../Schema/nest_Schema';
+import { employeeDocument, leaveDocument } from '../Schema/nest_Schema';
 import { EmployeeDto } from './EmployeeDto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
@@ -212,10 +208,48 @@ export class EmployeeService {
       res.status(400).send(err);
     }
   }
-  async ApproveLeaveByAdmin(req, res) {
+
+  async ApproveLeaveByAdmin(req, res, DateApprove: LeaveDto) {
     const NumberOfLeaveDoc = await this.LeaveModel.find();
-    console.log(NumberOfLeaveDoc);
-    console.log(NumberOfLeaveDoc.length);
-    res.send(' In progress');
+    const dat = new Date(DateApprove.date);
+
+    for (let i = 0; i < NumberOfLeaveDoc.length; i++) {
+      const emp = await this.EmployeeModel.findOne({
+        email: NumberOfLeaveDoc[i].email,
+      });
+
+      const checkEmp = await this.LeaveModel.findOneAndUpdate(
+        {
+          email: NumberOfLeaveDoc[i].email,
+          'leave.date': dat,
+          'leave.status': 'pending',
+        },
+        {
+          $set: { 'leave.$.status': 'Approved' },
+        },
+      );
+      if (checkEmp) {
+        emp.availableLeaves = emp.availableLeaves - 1;
+        emp.save();
+      }
+    }
+
+    res.status(200).json({
+      message: 'Successfully Approved for the date ',
+      Date: DateApprove.date,
+    });
+  }
+  async checkLeaveStatus(req) {
+    try {
+      const ver = this.jwtService.verify(req.cookies.employeelogoutcookie);
+      console.log(ver);
+      if (!ver) {
+        throw new HttpException('Unauthorized admin User error ', 401);
+      }
+      return await this.LeaveModel.findOne({ email: ver.Email });
+    } catch (error) {
+      console.log(error.message);
+      throw new HttpException('Login again ,Admin user Not found', 404);
+    }
   }
 }

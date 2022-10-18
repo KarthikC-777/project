@@ -13,6 +13,7 @@ import { AdminService } from './admin.service';
 import { AdminDto } from './AdminDto';
 import { EmployeeService } from '../employee/employee.service';
 import { EmployeeDto } from 'src/employee/EmployeeDto';
+import { LeaveDto } from '../employee/LeaveDto';
 
 @Controller('admin')
 export class AdminController {
@@ -64,10 +65,15 @@ export class AdminController {
   async DeleteEmployee(@Req() req, @Res() res, @Param('email') email: string) {
     return this.employeeService.DeleteEmployee(req, res, email);
   }
-  @Get('approveLeave')
-  async ApproveLeaveByAdmin(@Res() res, @Req() req) {
+  @Post('approveLeave')
+  async ApproveLeaveByAdmin(
+    @Res() res,
+    @Req() req,
+    @Body() DateApprove: LeaveDto,
+  ) {
+    console.log('controller', DateApprove.date);
     if (this.adminService.ApproveLeaveByAdmin(req)) {
-      this.employeeService.ApproveLeaveByAdmin(req, res);
+      this.employeeService.ApproveLeaveByAdmin(req, res, DateApprove);
     }
   }
 }
