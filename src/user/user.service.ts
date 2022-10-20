@@ -13,6 +13,7 @@ export class UserService {
     private jwtService: JwtService,
   ) {}
 
+
   async create(userDto: UserDto) {
     const existingUser = await this.userModel.findOne({
       email: userDto.email,
@@ -26,7 +27,6 @@ export class UserService {
     return await createdUser.save();
   }
   async loginUser(userDto: UserDto, res): Promise<string> {
-    // console.log(userDto.email);
     const checkUser = await this.userModel.findOne({
       email: userDto.email,
     });
@@ -64,7 +64,8 @@ export class UserService {
     res.clearCookie('userlogoutcookie');
     res.end('User logged out sucessfuly');
   }
-  async getemployee(req) {
+
+  async getEmployee(req:any) {
     try {
       const ver = await this.jwtService.verify(req.cookies.userlogoutcookie);
 
@@ -77,4 +78,19 @@ export class UserService {
       throw new HttpException('Login again ,Admin user Not found', 404);
     }
   }
+
+  async getEmployeeByEmail(req:any,res:any,Email:string)
+  {
+    try{
+      const verifyUser= await this.jwtService.verify(req.cookies.userlogoutcookie)
+      if (!verifyUser)
+      {
+        throw new HttpException('Unautorized Admin ',401)
+      }
+      return this.userModel.findOne({email:Email}).exec()
+    }catch (error)
+    {
+      throw new HttpException('Login again ,Admin user Not found', 404);
+    }
+  }  
 }
