@@ -35,4 +35,12 @@ export class UserController {
       result: await this.userService.getemployee(req),
     });
   }
+  @Post('forgot-password')
+  public async forgotpassword(
+    @Body() body: { email: string; password: string },
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    this.userService.forgotpassword(body, req, res);
+  }
 }

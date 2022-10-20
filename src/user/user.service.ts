@@ -77,4 +77,18 @@ export class UserService {
       throw new HttpException('Login again ,Admin user Not found', 404);
     }
   }
+  public async forgotpassword(body, req, res) {
+    this.userModel.find({ email: req.body.email }, (error, user) => {
+      if (user) {
+        const payload2 = { email: user[0].email, name: user[0].name };
+        const token2 = this.jwtService.sign(payload2, {
+          expiresIn: '15m',
+        });
+        res.cookie('reset_password_cookie', token2);
+        const link = `http://localhost:4000/user/reset-password?pa=${user[0].password}`;
+        console.log(link);
+        res.end('Reset password link is sent to mail');
+      }
+    });
+  }
 }
