@@ -64,4 +64,11 @@ export class UserController {
   ) {
     this.userService.forgotPassword(body, req, res);
   }
+  @Post('applyLeave')
+  async postLeave(@Req() req,@Body() leaveDto: leaveDto, @Res() res){
+    res.status(201).json({
+      message: `Leave applied successfully`,
+      result: await this.userService.applyleave(req,leaveDto,res)
+    })
+  }
 }
