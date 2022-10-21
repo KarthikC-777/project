@@ -1,7 +1,7 @@
 import { HttpException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { UserDto } from './dto/user.dto';
+import { EmployeeDto, UserDto } from './dto/user.dto';
 import { userDocument } from './user.schema';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
@@ -100,6 +100,59 @@ export class UserService {
         throw new HttpException('Unautorized Admin ', 401);
       }
       return this.userModel.findOne({ email: Email }).exec();
+    } catch (error) {
+      throw new HttpException('Login again ,Admin user Not found', 404);
+    }
+  }
+
+  //Update data by User
+  async updateEmployee(req, res, Email: string, userDto: UserDto) {
+    try {
+      const ver = this.jwtService.verify(req.cookies.userlogoutcookie);
+      //console.log(ver);
+      if (!ver) {
+        throw new HttpException('Unauthorized admin User error ', 401);
+      }
+      const existUser = await this.userModel.findOneAndUpdate(
+        { email: Email },
+        {
+          userId: userDto.userId,
+          name: userDto.name,
+          email: userDto.email,
+          phonenumber: userDto.phonenumber,
+          salary: userDto.salary,
+          designation: userDto.designation,
+          status: userDto.status,
+          address: userDto.address,
+          availableLeaves: userDto.availableLeaves,
+        },
+      );
+      if (!existUser) {
+        throw new HttpException('Invalid User Email', 404);
+      }
+    } catch (error) {
+      throw new HttpException('Login again ,Admin user Not found', 404);
+    }
+  }
+  async updateEmployeeUser(req, res, Email: string, employeeDto:EmployeeDto) {
+    try {
+      const ver = this.jwtService.verify(req.cookies.userlogoutcookie);
+      //console.log(ver);
+      if (!ver) {
+        throw new HttpException('Unauthorized admin User error ', 401);
+      }
+      const existUser = await this.userModel.findOneAndUpdate(
+        { email: Email },
+        {
+          name: employeeDto.name,
+          email: employeeDto.email,
+          phonenumber: employeeDto.phonenumber,
+          address: employeeDto.address,
+        },
+      );
+      if (!existUser) {
+        throw new HttpException('Invalid User Email', 404);
+      }
     } catch (error) {
       throw new HttpException('Login again ,Admin user Not found', 404);
     }
