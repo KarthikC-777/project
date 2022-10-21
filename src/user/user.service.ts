@@ -64,7 +64,7 @@ export class UserService {
     res.clearCookie('userlogoutcookie');
     res.end('User logged out sucessfuly');
   }
-  async getemployee(req) {
+  async getEmployee(req) {
     try {
       const ver = await this.jwtService.verify(req.cookies.userlogoutcookie);
 
@@ -77,7 +77,7 @@ export class UserService {
       throw new HttpException('Login again ,Admin user Not found', 404);
     }
   }
-  public async forgotpassword(body, req, res) {
+  public async forgotPassword(body, req, res) {
     this.userModel.find({ email: req.body.email }, (error, user) => {
       if (user) {
         const payload2 = { email: user[0].email, name: user[0].name };
@@ -90,5 +90,18 @@ export class UserService {
         res.end('Reset password link is sent to mail');
       }
     });
+  }
+  async getEmployeeByEmail(req: any, res: any, Email: string) {
+    try {
+      const verifyUser = await this.jwtService.verify(
+        req.cookies.userlogoutcookie,
+      );
+      if (!verifyUser) {
+        throw new HttpException('Unautorized Admin ', 401);
+      }
+      return this.userModel.findOne({ email: Email }).exec();
+    } catch (error) {
+      throw new HttpException('Login again ,Admin user Not found', 404);
+    }
   }
 }
