@@ -11,3 +11,10 @@ export class UserDto {
   readonly address: string;
   readonly availableLeaves: number;
 }
+
+export class EmployeeDto {
+  readonly name: string;
+  readonly email: string;
+  readonly phonenumber: number;
+  readonly address: string;
+}
