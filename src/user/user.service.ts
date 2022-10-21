@@ -84,7 +84,7 @@ export class UserService {
         const token2 = this.jwtService.sign(payload2, {
           expiresIn: '15m',
         });
-        res.cookie('reset_password_cookie', token2);
+        res.cookie('reset-password-cookie', token2);
         const link = `http://localhost:4000/user/reset-password?pa=${user[0].password}`;
         console.log(link);
         res.end('Reset password link is sent to mail');
