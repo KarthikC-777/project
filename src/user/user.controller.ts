@@ -57,7 +57,7 @@ export class UserController {
     });
   }
   @Post('forgot-password')
-  public async forgotaPssword(
+  public async forgotaPassword(
     @Body() body: { email: string; password: string },
     @Req() req: Request,
     @Res() res: Response,
