@@ -5,11 +5,15 @@ import { UserDto } from './dto/user.dto';
 import { userDocument } from './user.schema';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { leaveDocument } from './leave.schema';
+import { leaveDto } from './dto/leave.dto';
 @Injectable()
 export class UserService {
   constructor(
     @InjectModel('User')
     private readonly userModel: Model<userDocument>,
+    @InjectModel('Leave')
+    private readonly leaveModel: Model<leaveDocument>,
     private jwtService: JwtService,
   ) {}
 
@@ -104,4 +108,35 @@ export class UserService {
       throw new HttpException('Login again ,Admin user Not found', 404);
     }
   }
+
+  async applyleave(req,leaveDto: leaveDto,res){
+    try{
+      const ver = await this.jwtService.verify(req.cookies.userlogoutcookie);
+
+      if (!ver) {
+        throw new HttpException('Unauthorized admin User error ', 401);
+      }
+      if('status' in leaveDto){
+        throw new HttpException(' `Status` access in forbidden', 403)
+      }
+      const user = await this.userModel.findOne({email: ver.Email}).exec()
+      if(!new Date(leaveDto.leaveDate).getTime() || (leaveDto.leaveDate).length<10){
+        throw new HttpException(' `leaveDate` must be in the format yyyy/mm/dd',400)
+      }
+
+      const newDate = new Date(leaveDto.leaveDate)
+      if(newDate.getTime()<Date.now() || user.availableLeaves<1){
+        throw new HttpException("Cannot apply leave for older dates or No leaves available", 400)
+      }
+      const leaveExist= await this.leaveModel.findOne({email:ver.Email,leaveDate: newDate.toISOString()})
+      if(leaveExist){
+        throw new HttpException(`Leave already exists`, 200)
+      }
+      const newLeave = await new this.leaveModel({email:ver.Email, leaveDate: newDate.toISOString()})
+      return await newLeave.save()
+    }catch(error){
+      throw new HttpException(error.message, error.status)
+    }
+  }
+
 }
