@@ -9,7 +9,7 @@ import {
   Param,
 } from '@nestjs/common';
 import { UserDto } from './dto/user.dto';
-
+import { leaveDto } from './dto/leave.dto';
 import { Roles } from './entities/roles.decorator';
 import { UserRole } from './user.schema';
 import { UserService } from './user.service';
@@ -56,12 +56,21 @@ export class UserController {
       result: await this.userService.getEmployeeByEmail(req, res, email),
     });
   }
-  @Post('forgot-password')
-  public async forgotPassword(
-    @Body() body: { email: string; password: string },
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    this.userService.forgotPassword(body, req, res);
+  // @Post('forgot-password')
+  // public async forgotPassword(
+  //   @Body() body: { email: string; password: string },
+  //   @Req() req: Request,
+  //   @Res() res: Response,
+  // ) {
+  //   this.userService.forgotPassword(body, req, res);
+  // }
+
+  @Post('applyLeave')
+  async postLeave(@Req() req,@Body() leaveDto: leaveDto, @Res() res){
+    res.status(201).json({
+      message: `Leave applied successfully`,
+      result: await this.userService.applyleave(req,leaveDto,res)
+    })
   }
+
 }
