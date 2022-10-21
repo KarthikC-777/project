@@ -1,4 +1,13 @@
-import { Body, Controller, Post, Res, Delete, Req, Get } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  Res,
+  Delete,
+  Req,
+  Get,
+  Param,
+} from '@nestjs/common';
 import { UserDto } from './dto/user.dto';
 
 import { Roles } from './entities/roles.decorator';
@@ -29,18 +38,30 @@ export class UserController {
   }
   @Get('employee')
   @Roles(UserRole.Admin)
-  async getemployee(@Req() req, @Res() res) {
+  async getEmployee(@Req() req, @Res() res) {
     res.status(200).json({
       message: 'Employee Details',
-      result: await this.userService.getemployee(req),
+      result: await this.userService.getEmployee(req),
+    });
+  }
+  @Get('employeeByEmail/:email')
+  @Roles(UserRole.Admin)
+  async getEmployeeByEmail(
+    @Req() req,
+    @Res() res,
+    @Param('email') email: string,
+  ) {
+    res.status(200).json({
+      message: `Employee details with Email: ${email}`,
+      result: await this.userService.getEmployeeByEmail(req, res, email),
     });
   }
   @Post('forgot-password')
-  public async forgotpassword(
+  public async forgotPassword(
     @Body() body: { email: string; password: string },
     @Req() req: Request,
     @Res() res: Response,
   ) {
-    this.userService.forgotpassword(body, req, res);
+    this.userService.forgotPassword(body, req, res);
   }
 }
