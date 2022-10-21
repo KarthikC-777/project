@@ -15,6 +15,10 @@ import { APP_GUARD } from '@nestjs/core';
         name: 'User',
         schema: userSchema,
       },
+      {
+        name: 'Leave',
+        schema: leaveschema
+      }
     ]),
     JwtModule.register({
       secret: 'User-secret',
