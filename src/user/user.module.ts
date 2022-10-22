@@ -7,6 +7,7 @@ import { UserService } from './user.service';
 import { RolesGuard } from './roles.guard';
 import { JwtModule } from '@nestjs/jwt';
 import { APP_GUARD } from '@nestjs/core';
+import { leaveschema } from './leave.schema';
 
 @Module({
   imports: [
@@ -15,6 +16,10 @@ import { APP_GUARD } from '@nestjs/core';
         name: 'User',
         schema: userSchema,
       },
+      {
+        name: 'Leave',
+        schema: leaveschema
+      }
     ]),
     JwtModule.register({
       secret: 'User-secret',
