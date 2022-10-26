@@ -347,4 +347,48 @@ export class UserService {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
+
+  async deleteUser(Email: string, req, res) {
+    try {
+      const ver = await this.jwtService.verify(req.cookies.userlogoutcookie);
+
+      if (!ver) {
+        throw new HttpException('Unauthorized admin User error ', 401);
+      }
+      const existUser = await this.userModel.findOneAndUpdate(
+        { email: Email },
+        { $set: { status: 'Inactive' } },
+      );
+
+      if (!existUser) {
+        throw new HttpException('Invalid User Email', 404);
+      }
+      return existUser;
+    } catch (error) {
+      console.log(error.message);
+      throw new HttpException('Login again ,Admin user Not found', 404);
+    }
+  }
+
+  async activateUser(Email: string, req, res) {
+    try {
+      const ver = await this.jwtService.verify(req.cookies.userlogoutcookie);
+
+      if (!ver) {
+        throw new HttpException('Unauthorized admin User error ', 401);
+      }
+      const existUser = await this.userModel.findOneAndUpdate(
+        { email: Email },
+        { $set: { status: 'Active' } },
+      );
+
+      if (!existUser) {
+        throw new HttpException('Invalid User Email', 404);
+      }
+      return existUser;
+    } catch (error) {
+      console.log(error.message);
+      throw new HttpException('Login again ,Admin user Not found', 404);
+    }
+  }
 }

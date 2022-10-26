@@ -185,4 +185,24 @@ export class UserController {
   ) {
     return this.userService.viewPendingLeaveOfUser(req, email, res);
   }
+
+  //access:admin soft deleting the user/employee
+  @Patch('deleteUser/:email')
+  @Roles(UserRole.Admin)
+  async deleteUser(@Req() req, @Res() res, @Param('email') Email: string) {
+    res.status(200).json({
+      message: 'User Deleted',
+      result: await this.userService.deleteUser(Email, req, res),
+    });
+  }
+
+  //access:admin activating the user/employee
+  @Patch('activateUser/:email')
+  @Roles(UserRole.Admin)
+  async activateUser(@Req() req, @Res() res, @Param('email') Email: string) {
+    res.status(200).json({
+      message: 'User Activated',
+      result: await this.userService.activateUser(Email, req, res),
+    });
+  }
 }
