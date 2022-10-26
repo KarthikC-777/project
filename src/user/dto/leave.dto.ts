@@ -1,7 +1,7 @@
-export class leaveDto{
-    readonly email: string;
+export class leaveDto {
+  readonly email: string;
 
-    readonly leaveDate: string;
+  readonly leaveDate: string;
 
-    readonly status: string;
+  readonly status: string;
 }
