@@ -375,7 +375,7 @@ export class UserService {
       const ver = await this.jwtService.verify(req.cookies.userlogoutcookie);
 
       if (!ver) {
-        throw new HttpException('Unauthorized admin User error ', 401);
+        throw new HttpException('Unauthorized admin User error', 401);
       }
       const existUser = await this.userModel.findOneAndUpdate(
         { email: Email },
