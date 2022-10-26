@@ -7,9 +7,10 @@ import {
   Req,
   Get,
   Param,
+  Patch,
 } from '@nestjs/common';
 import { UserDto } from './dto/user.dto';
-
+import { leaveDto } from './dto/leave.dto';
 import { Roles } from './entities/roles.decorator';
 import { UserRole } from './user.schema';
 import { UserService } from './user.service';
@@ -59,9 +60,71 @@ export class UserController {
   @Post('forgot-password')
   public async forgotPassword(
     @Body() body: { email: string; password: string },
-    @Req() req: Request,
-    @Res() res: Response,
+    @Req() req,
+    @Res() res ,
   ) {
     this.userService.forgotPassword(body, req, res);
   }
+   
+  @Post('applyLeave')
+  async postLeave(@Req() req,@Body() leaveDto: leaveDto, @Res() res){
+    res.status(201).json({
+      message: `Leave applied successfully`,
+      result: await this.userService.applyleave(req,leaveDto,res)
+    })
+  }
+
+
+  @Get('viewLeaves')
+  @Roles(UserRole.Admin)
+  public async checkLeaveStatus(@Res() res, @Req() req) {
+    res.status(200).json({
+      message: 'Details',
+      result: await this.userService.viewLeaves(req,),
+    });
+  }
+
+ /* @Patch('approveLeaves')
+  @Roles(UserRole.Admin)
+  async approveLeave(@Body() leaveDto: leaveDto,@Res() res,@Req () req)
+  {
+    res.status(201).json({
+      message: `Leave applied successfully`,
+      result: await this.userService.approveLeave(leaveDto,res,req)
+    })
+
+  }
+  */
+  @Patch('approveLeaves/:email')
+  @Roles(UserRole.Admin)
+  async approveLeave(@Body() date:string[],@Res() res,@Req () req,@Param('email') Email:string)
+  {
+    res.status(201).json({
+      message: `Leave applied successfully`,
+      result: await this.userService.approveLeave(Email,date,res,req)
+    })
+
+  }
+
+  @Get('viewPendingLeaves/:status')
+  @Roles(UserRole.Admin)
+  async viewPendingLeave(@Req() req, @Res() res, @Param('status') status: string) {
+    return this.userService.viewPendingLeave(req, status, res);
+  }
+  
+  @Get('checkStatus')
+  async viewLeave(@Req() req, @Res() res) {
+    return this.userService.viewLeave(req,res);
+  }
+  
+  @Get('viewPendingLeavesOfUser/:email')
+  @Roles(UserRole.Admin)
+  async viewPendingLeaveOfUser(@Req() req, @Res() res, @Param('email') email: string) {
+    return this.userService.viewPendingLeaveOfUser(req, email, res);
+  }
+
+  
 }
+
+
+
