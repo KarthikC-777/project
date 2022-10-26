@@ -188,7 +188,7 @@ export class UserService {
     }
   }
 
-  async applyleave(req, leaveDto: leaveDto) {
+  async applyLeave(req, leaveDto: leaveDto) {
     try {
       const ver = await this.jwtService.verify(req.cookies.userlogoutcookie);
 
