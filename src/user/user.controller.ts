@@ -129,7 +129,7 @@ export class UserController {
   async postLeave(@Req() req, @Body() leaveDto: leaveDto, @Res() res) {
     res.status(201).json({
       message: `Leave applied successfully`,
-      result: await this.userService.applyleave(req, leaveDto),
+      result: await this.userService.applyLeave(req, leaveDto),
     });
   }
 
