@@ -23,7 +23,7 @@ export class UserService {
       email: userDto.email,
     });
     if (existingUser) {
-      throw new HttpException('Email taken', 403);
+      throw new HttpException('Email taken', HttpStatus.FORBIDDEN);
     }
     const createdUser = new this.userModel(userDto);
 
@@ -49,7 +49,7 @@ export class UserService {
       checkUser.password,
     );
     if (!passwordCheck) {
-      throw new HttpException('Incorrect Password', 401);
+      throw new HttpException('Incorrect Password', HttpStatus.BAD_REQUEST);
     }
     const token = this.generateJwt(
       checkUser.userId,
@@ -350,7 +350,7 @@ export class UserService {
         )
         .exec();
       if (!existUser) {
-        throw new HttpException('Invalid User ', 404);
+        throw new HttpException('Invalid User ', HttpStatus.NOT_FOUND);
       } else if (existUser.length == 0) {
         throw new HttpException(
           'no Pending leaves or invalid email',
