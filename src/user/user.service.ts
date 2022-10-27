@@ -35,9 +35,14 @@ export class UserService {
     const checkUser = await this.userModel.findOne({
       email: userDto.email,
     });
-
     if (!checkUser) {
-      throw new HttpException('Incorrect Email', 404);
+      throw new HttpException(
+        'Incorrect Email',
+        HttpStatus.NON_AUTHORITATIVE_INFORMATION,
+      );
+    }
+    if (checkUser.status == 'Inactive') {
+      throw new HttpException('Employee Not found', HttpStatus.NOT_FOUND);
     }
     const passwordCheck = await bcrypt.compare(
       userDto.password,
@@ -71,14 +76,19 @@ export class UserService {
 
   async getEmployee(req) {
     try {
-      const ver = await this.jwtService.verify(req.cookies.userlogoutcookie);
+      const verifyUser = await this.jwtService.verify(
+        req.cookies.userlogoutcookie,
+      );
 
-      if (!ver) {
-        throw new HttpException('Unauthorized admin User error ', 401);
+      if (!verifyUser) {
+        throw new HttpException(
+          'Unauthorized  User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
       return this.userModel.find().exec();
     } catch (error) {
-      throw new HttpException('Login again ,Admin user Not found', 404);
+      throw new HttpException(error.message, error.status);
     }
   }
 
@@ -129,19 +139,22 @@ export class UserService {
         req.cookies.userlogoutcookie,
       );
       if (!verifyUser) {
-        throw new HttpException('Unautorized Admin ', 401);
+        throw new HttpException('Unauhorized', HttpStatus.UNAUTHORIZED);
       }
       return this.userModel.findOne({ email: Email }).exec();
     } catch (error) {
-      throw new HttpException('Login again ,Admin user Not found', 404);
+      throw new HttpException(error.message, error.status);
     }
   }
 
   async updateEmployee(req, res, Email: string, userDto: UserDto) {
     try {
-      const ver = this.jwtService.verify(req.cookies.userlogoutcookie);
-      if (!ver) {
-        throw new HttpException('Unauthorized admin User error ', 401);
+      const verifyUser = this.jwtService.verify(req.cookies.userlogoutcookie);
+      if (!verifyUser) {
+        throw new HttpException(
+          'Unauthorized User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
       const existUser = await this.userModel.findOneAndUpdate(
         { email: Email },
@@ -158,18 +171,24 @@ export class UserService {
         },
       );
       if (!existUser) {
-        throw new HttpException('Invalid User Email', 404);
+        throw new HttpException(
+          'Invalid User Email',
+          HttpStatus.NON_AUTHORITATIVE_INFORMATION,
+        );
       }
     } catch (error) {
-      throw new HttpException('Login again ,Admin user Not found', 404);
+      throw new HttpException(error.message, error.status);
     }
   }
 
   async updateEmployeeUser(req, res, Email: string, employeeDto: EmployeeDto) {
     try {
-      const ver = this.jwtService.verify(req.cookies.userlogoutcookie);
-      if (!ver) {
-        throw new HttpException('Unauthorized admin User error ', 401);
+      const verifyUser = this.jwtService.verify(req.cookies.userlogoutcookie);
+      if (!verifyUser) {
+        throw new HttpException(
+          'Unauthorized User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
       const existUser = await this.userModel.findOneAndUpdate(
         { email: Email },
@@ -181,49 +200,59 @@ export class UserService {
         },
       );
       if (!existUser) {
-        throw new HttpException('Invalid User Email', 404);
+        throw new HttpException('Invalid User Email', HttpStatus.NOT_FOUND);
       }
     } catch (error) {
-      throw new HttpException('Login again ,Admin user Not found', 404);
+      throw new HttpException(error.message, error.status);
     }
   }
 
   async applyLeave(req, leaveDto: leaveDto) {
     try {
-      const ver = await this.jwtService.verify(req.cookies.userlogoutcookie);
+      const verifyUser = await this.jwtService.verify(
+        req.cookies.userlogoutcookie,
+      );
 
-      if (!ver) {
-        throw new HttpException('Unauthorized admin User error ', 401);
+      if (!verifyUser) {
+        throw new HttpException(
+          'Unauthorized  User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
       if ('status' in leaveDto) {
-        throw new HttpException(' `Status` access in forbidden', 403);
+        throw new HttpException(
+          ' `Status` access in forbidden',
+          HttpStatus.FORBIDDEN,
+        );
       }
-      const user = await this.userModel.findOne({ email: ver.Email }).exec();
+      const user = await this.userModel
+        .findOne({ email: verifyUser.Email })
+        .exec();
       if (
         !new Date(leaveDto.leaveDate).getTime() ||
         leaveDto.leaveDate.length < 10
       ) {
         throw new HttpException(
           ' `leaveDate` must be in the format yyyy/mm/dd',
-          400,
+          HttpStatus.BAD_REQUEST,
         );
       }
       const newDate = new Date(leaveDto.leaveDate);
       if (newDate.getTime() < Date.now() || user.availableLeaves < 1) {
         throw new HttpException(
           'Cannot apply leave for older dates or No leaves available',
-          400,
+          HttpStatus.NOT_ACCEPTABLE,
         );
       }
       const leaveExist = await this.leaveModel.findOne({
-        email: ver.Email,
+        email: verifyUser.Email,
         leaveDate: newDate.toISOString(),
       });
       if (leaveExist) {
-        throw new HttpException(`Leave already exists`, 200);
+        throw new HttpException(`Leave already exists`, HttpStatus.OK);
       }
       const newLeave = await new this.leaveModel({
-        email: ver.Email,
+        email: verifyUser.Email,
         leaveDate: newDate.toISOString(),
       });
       return await newLeave.save();
@@ -234,21 +263,29 @@ export class UserService {
 
   async viewLeaves(req) {
     try {
-      const ver = await this.jwtService.verify(req.cookies.userlogoutcookie);
-      if (!ver) {
-        throw new HttpException('Unauthorized admin User error ', 401);
+      const verifyUser = await this.jwtService.verify(
+        req.cookies.userlogoutcookie,
+      );
+      if (!verifyUser) {
+        throw new HttpException(
+          'Unauthorized  User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
       return this.leaveModel.find().exec();
     } catch (error) {
-      throw new HttpException('Login again ,Admin user Not found', 404);
+      throw new HttpException(error.message, error.status);
     }
   }
 
   async viewPendingLeave(req, status: string, res) {
     try {
-      const ver = this.jwtService.verify(req.cookies.userlogoutcookie);
-      if (!ver) {
-        throw new HttpException('Unauthorized admin User error ', 401);
+      const verifyUser = this.jwtService.verify(req.cookies.userlogoutcookie);
+      if (!verifyUser) {
+        throw new HttpException(
+          'Unauthorized  User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
       const existUser = await this.leaveModel
         .find({
@@ -256,7 +293,7 @@ export class UserService {
         })
         .exec();
       if (!existUser) {
-        throw new HttpException('Invalid User ', 404);
+        throw new HttpException('Invalid User ', HttpStatus.NOT_FOUND);
       }
 
       res.status(200).json({
@@ -264,38 +301,44 @@ export class UserService {
         result: existUser,
       });
     } catch (error) {
-      throw new HttpException('Login again ,Admin user Not found', 404);
+      throw new HttpException(error.message, error.status);
     }
   }
 
   async viewLeave(req, res) {
     try {
-      const ver = this.jwtService.verify(req.cookies.userlogoutcookie);
-      if (!ver) {
-        throw new HttpException('Unauthorized admin User error ', 401);
+      const verifyUser = this.jwtService.verify(req.cookies.userlogoutcookie);
+      if (!verifyUser) {
+        throw new HttpException(
+          'Unauthorized  User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
       const existUser = await this.leaveModel
         .find({
-          email: ver.Email,
+          email: verifyUser.Email,
         })
         .exec();
       if (!existUser) {
-        throw new HttpException('Invalid User ', 404);
+        throw new HttpException('Invalid User ', HttpStatus.NOT_FOUND);
       }
-      res.status(200).json({
-        message: `Details of user with status ${ver.Email}`,
+      res.status(HttpStatus.OK).json({
+        message: `Details of user with status ${verifyUser.Email}`,
         result: existUser,
       });
     } catch (error) {
-      throw new HttpException('Login again ,Admin user Not found', 404);
+      throw new HttpException(error.message, error.status);
     }
   }
 
   async viewPendingLeaveOfUser(req, Email: string, res) {
     try {
-      const ver = this.jwtService.verify(req.cookies.userlogoutcookie);
-      if (!ver) {
-        throw new HttpException('Unauthorized admin User error ', 401);
+      const verifyUser = this.jwtService.verify(req.cookies.userlogoutcookie);
+      if (!verifyUser) {
+        throw new HttpException(
+          'Unauthorized  User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
       const existUser = await this.leaveModel
         .find(
@@ -319,18 +362,23 @@ export class UserService {
         result: existUser,
       });
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      throw new HttpException(error.message, error.status);
     }
   }
 
   async approveLeave(Email: string, date: string[], res, req) {
     try {
-      const ver = await this.jwtService.verify(req.cookies.userlogoutcookie);
+      const verifyUser = await this.jwtService.verify(
+        req.cookies.userlogoutcookie,
+      );
       const emp = await this.userModel.findOne({
         email: Email,
       });
-      if (!ver) {
-        throw new HttpException('Unauthorized admin User error ', 401);
+      if (!verifyUser) {
+        throw new HttpException(
+          'Unauthorized  User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
       for (let i = 0; i < date.length; i++) {
         const newDate = new Date(date[i]);
@@ -340,20 +388,25 @@ export class UserService {
         );
         if (user) {
           emp.availableLeaves = emp.availableLeaves - 1;
-          emp.save();
         }
       }
+      emp.save();
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      throw new HttpException(error.message, error.status);
     }
   }
 
-  async deleteUser(Email: string, req, res) {
+  async deleteUser(Email: string, req) {
     try {
-      const ver = await this.jwtService.verify(req.cookies.userlogoutcookie);
+      const verifyUser = await this.jwtService.verify(
+        req.cookies.userlogoutcookie,
+      );
 
-      if (!ver) {
-        throw new HttpException('Unauthorized admin User error ', 401);
+      if (!verifyUser) {
+        throw new HttpException(
+          'Unauthorized  User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
       const existUser = await this.userModel.findOneAndUpdate(
         { email: Email },
@@ -361,21 +414,25 @@ export class UserService {
       );
 
       if (!existUser) {
-        throw new HttpException('Invalid User Email', 404);
+        throw new HttpException('Invalid User Email', HttpStatus.NOT_FOUND);
       }
       return existUser;
     } catch (error) {
-      console.log(error.message);
-      throw new HttpException('Login again ,Admin user Not found', 404);
+      throw new HttpException(error.message, error.status);
     }
   }
 
-  async activateUser(Email: string, req, res) {
+  async activateUser(Email: string, req) {
     try {
-      const ver = await this.jwtService.verify(req.cookies.userlogoutcookie);
+      const verifyUser = await this.jwtService.verify(
+        req.cookies.userlogoutcookie,
+      );
 
-      if (!ver) {
-        throw new HttpException('Unauthorized admin User error ', 401);
+      if (!verifyUser) {
+        throw new HttpException(
+          'Unauthorized  User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
       const existUser = await this.userModel.findOneAndUpdate(
         { email: Email },
@@ -383,12 +440,11 @@ export class UserService {
       );
 
       if (!existUser) {
-        throw new HttpException('Invalid User Email', 404);
+        throw new HttpException('Invalid User Email', HttpStatus.NOT_FOUND);
       }
       return existUser;
     } catch (error) {
-      console.log(error.message);
-      throw new HttpException('Login again ,Admin user Not found', 404);
+      throw new HttpException(error.message, error.status);
     }
   }
 }

@@ -12,10 +12,12 @@ import {
   Query,
 } from '@nestjs/common';
 import { EmployeeDto, UserDto } from './dto/user.dto';
+import { Request, Response } from 'express';
 import { leaveDto } from './dto/leave.dto';
 import { Roles } from './entities/roles.decorator';
 import { UserRole } from './user.schema';
 import { UserService } from './user.service';
+import { HttpStatus } from '@nestjs/common';
 
 @Controller('user')
 export class UserController {
@@ -24,7 +26,7 @@ export class UserController {
   //For registering employee Input:json{name,email,address,password}
   @Post('register')
   async create(@Res() res, @Body() userDto: UserDto) {
-    res.status(201).json({
+    res.status(HttpStatus.CREATED).json({
       message: 'Successfully Registered',
       result: await this.userService.create(userDto),
     });
@@ -33,7 +35,7 @@ export class UserController {
   //For login Input:json{email,password}
   @Post('login')
   async loginUser(@Res() res, @Body() userDto: UserDto) {
-    res.status(200).json({
+    res.status(HttpStatus.OK).json({
       message: 'Logined Succesfully',
       JWT: await this.userService.loginUser(userDto, res),
     });
@@ -49,7 +51,7 @@ export class UserController {
   @Get('employee')
   @Roles(UserRole.Admin)
   async getEmployee(@Req() req, @Res() res) {
-    res.status(200).json({
+    res.status(HttpStatus.OK).json({
       message: 'Employee Details',
       result: await this.userService.getEmployee(req),
     });
@@ -63,7 +65,7 @@ export class UserController {
     @Res() res,
     @Param('email') email: string,
   ) {
-    res.status(200).json({
+    res.status(HttpStatus.OK).json({
       message: `Employee details with Email: ${email}`,
       result: await this.userService.getEmployeeByEmail(req, res, email),
     });
@@ -78,7 +80,7 @@ export class UserController {
     @Param('email') Email: string,
     @Body() userDto: UserDto,
   ) {
-    res.status(200).json({
+    res.status(HttpStatus.OK).json({
       message: `Employee ${Email} updated`,
       result: await this.userService.updateEmployee(req, res, Email, userDto),
     });
@@ -92,7 +94,7 @@ export class UserController {
     @Param('email') Email: string,
     @Body() employeeDto: EmployeeDto,
   ) {
-    res.status(200).json({
+    res.status(HttpStatus.OK).json({
       message: `Employee ${Email} updated`,
       result: await this.userService.updateEmployeeUser(
         req,
@@ -127,7 +129,7 @@ export class UserController {
   //For applying leave Input:json{leaveDate:"YYYY-MM-DD"}
   @Post('applyLeave')
   async postLeave(@Req() req, @Body() leaveDto: leaveDto, @Res() res) {
-    res.status(201).json({
+    res.status(HttpStatus.CREATED).json({
       message: `Leave applied successfully`,
       result: await this.userService.applyLeave(req, leaveDto),
     });
@@ -137,7 +139,7 @@ export class UserController {
   @Get('viewLeaves')
   @Roles(UserRole.Admin)
   public async checkLeaveStatus(@Res() res, @Req() req) {
-    res.status(200).json({
+    res.status(HttpStatus.OK).json({
       message: 'Details',
       result: await this.userService.viewLeaves(req),
     });
@@ -152,7 +154,7 @@ export class UserController {
     @Req() req,
     @Param('email') Email: string,
   ) {
-    res.status(201).json({
+    res.status(HttpStatus.CREATED).json({
       message: `Leave applied successfully`,
       result: await this.userService.approveLeave(Email, date, res, req),
     });
@@ -190,9 +192,9 @@ export class UserController {
   @Patch('deleteUser/:email')
   @Roles(UserRole.Admin)
   async deleteUser(@Req() req, @Res() res, @Param('email') Email: string) {
-    res.status(200).json({
+    res.status(HttpStatus.OK).json({
       message: 'User Deleted',
-      result: await this.userService.deleteUser(Email, req, res),
+      result: await this.userService.deleteUser(Email, req),
     });
   }
 
@@ -200,9 +202,9 @@ export class UserController {
   @Patch('activateUser/:email')
   @Roles(UserRole.Admin)
   async activateUser(@Req() req, @Res() res, @Param('email') Email: string) {
-    res.status(200).json({
+    res.status(HttpStatus.OK).json({
       message: 'User Activated',
-      result: await this.userService.activateUser(Email, req, res),
+      result: await this.userService.activateUser(Email, req),
     });
   }
 }
