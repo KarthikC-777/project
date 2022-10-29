@@ -2,10 +2,10 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UserDto, EmployeeDto } from './dto/user.dto';
-import { userDocument } from './user.schema';
+import { user, userDocument } from './user.schema';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-import { leaveDocument } from './leave.schema';
+import { leave, leaveDocument } from './leave.schema';
 import { leaveDto } from './dto/leave.dto';
 const userProjection = { __v: false, _id: false, email: false };
 
@@ -18,7 +18,7 @@ export class UserService {
     @InjectModel('Leave') private readonly leaveModel: Model<leaveDocument>,
   ) {}
 
-  async create(userDto: UserDto) {
+  async create(userDto: UserDto):Promise<UserDto> {
     const existingUser = await this.userModel.findOne({
       email: userDto.email,
     });
@@ -74,7 +74,7 @@ export class UserService {
     res.end('User logged out sucessfuly');
   }
 
-  async getEmployee(req) {
+  async getEmployee(req) :Promise<user[]>{
     try {
       const verifyUser = await this.jwtService.verify(
         req.cookies.userlogoutcookie,
@@ -92,7 +92,7 @@ export class UserService {
     }
   }
 
-  public async forgotPassword(body, req, res) {
+  public async forgotPassword(body, req, res) :Promise<void>{
     this.userModel.find({ email: req.body.email }, (error, user) => {
       if (user) {
         const payload2 = { email: user[0].email, name: user[0].name };
@@ -107,7 +107,7 @@ export class UserService {
     });
   }
 
-  public async resetPassword(body, req, res, query) {
+  public async resetPassword(body, req, res, query) :Promise<void>{
     const user = this.userModel.find({
       password: query.hash,
     });
@@ -147,7 +147,7 @@ export class UserService {
     }
   }
 
-  async updateEmployee(req, res, Email: string, userDto: UserDto) {
+  async updateEmployee(req, res, Email: string, userDto: UserDto) :Promise<void>{
     try {
       const verifyUser = this.jwtService.verify(req.cookies.userlogoutcookie);
       if (!verifyUser) {
@@ -181,7 +181,7 @@ export class UserService {
     }
   }
 
-  async updateEmployeeUser(req, res, Email: string, employeeDto: EmployeeDto) {
+  async updateEmployeeUser(req, res, Email: string, employeeDto: EmployeeDto) :Promise<void>{
     try {
       const verifyUser = this.jwtService.verify(req.cookies.userlogoutcookie);
       if (!verifyUser) {
@@ -207,7 +207,7 @@ export class UserService {
     }
   }
 
-  async applyLeave(req, leaveDto: leaveDto) {
+  async applyLeave(req, leaveDto: leaveDto):Promise<leaveDto> {
     try {
       const verifyUser = await this.jwtService.verify(
         req.cookies.userlogoutcookie,
@@ -261,7 +261,7 @@ export class UserService {
     }
   }
 
-  async viewLeaves(req) {
+  async viewLeaves(req) :Promise<leaveDto[]>{
     try {
       const verifyUser = await this.jwtService.verify(
         req.cookies.userlogoutcookie,
@@ -278,7 +278,7 @@ export class UserService {
     }
   }
 
-  async viewPendingLeave(req, status: string, res) {
+  async viewPendingLeave(req, status: string, res) :Promise<void>{
     try {
       const verifyUser = this.jwtService.verify(req.cookies.userlogoutcookie);
       if (!verifyUser) {
@@ -305,7 +305,7 @@ export class UserService {
     }
   }
 
-  async viewLeave(req, res) {
+  async viewLeave(req, res) :Promise<void>{
     try {
       const verifyUser = this.jwtService.verify(req.cookies.userlogoutcookie);
       if (!verifyUser) {
@@ -331,7 +331,7 @@ export class UserService {
     }
   }
 
-  async viewPendingLeaveOfUser(req, Email: string, res) {
+  async viewPendingLeaveOfUser(req, Email: string, res) :Promise<void>{
     try {
       const verifyUser = this.jwtService.verify(req.cookies.userlogoutcookie);
       if (!verifyUser) {
@@ -366,7 +366,7 @@ export class UserService {
     }
   }
 
-  async approveLeave(Email: string, date: string[], res, req) {
+  async approveLeave(Email: string, date: string[], res, req) :Promise<void>{
     try {
       const verifyUser = await this.jwtService.verify(
         req.cookies.userlogoutcookie,
@@ -396,7 +396,7 @@ export class UserService {
     }
   }
 
-  async deleteUser(Email: string, req) {
+  async deleteUser(Email: string, req) :Promise<user>{
     try {
       const verifyUser = await this.jwtService.verify(
         req.cookies.userlogoutcookie,
@@ -422,7 +422,7 @@ export class UserService {
     }
   }
 
-  async activateUser(Email: string, req) {
+  async activateUser(Email: string, req) :Promise<user>{
     try {
       const verifyUser = await this.jwtService.verify(
         req.cookies.userlogoutcookie,
