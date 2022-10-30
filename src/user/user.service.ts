@@ -1,46 +1,55 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { EmployeeDto, UserDto } from './dto/user.dto';
-import { userDocument } from './user.schema';
+import { UserDto, EmployeeDto } from './dto/user.dto';
+import { user, userDocument } from './user.schema';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { leave, leaveDocument } from './leave.schema';
+import { leaveDto } from './dto/leave.dto';
+const userProjection = { __v: false, _id: false, email: false };
+
 @Injectable()
 export class UserService {
   constructor(
     @InjectModel('User')
     private readonly userModel: Model<userDocument>,
     private jwtService: JwtService,
+    @InjectModel('Leave') private readonly leaveModel: Model<leaveDocument>,
   ) {}
 
-  async create(userDto: UserDto) {
+  async create(userDto: UserDto):Promise<UserDto> {
     const existingUser = await this.userModel.findOne({
       email: userDto.email,
     });
     if (existingUser) {
-      throw new HttpException('Email taken', 403);
+      throw new HttpException('Email taken', HttpStatus.FORBIDDEN);
     }
     const createdUser = new this.userModel(userDto);
 
     createdUser.password = await bcrypt.hash(createdUser.password, 10);
     return await createdUser.save();
   }
+
   async loginUser(userDto: UserDto, res): Promise<string> {
-    // console.log(userDto.email);
     const checkUser = await this.userModel.findOne({
       email: userDto.email,
     });
-
     if (!checkUser) {
-      throw new HttpException('Incorrect Email', 404);
+      throw new HttpException(
+        'Incorrect Email',
+        HttpStatus.NON_AUTHORITATIVE_INFORMATION,
+      );
     }
-
+    if (checkUser.status == 'Inactive') {
+      throw new HttpException('Employee Not found', HttpStatus.NOT_FOUND);
+    }
     const passwordCheck = await bcrypt.compare(
       userDto.password,
       checkUser.password,
     );
     if (!passwordCheck) {
-      throw new HttpException('Incorrect Password', 401);
+      throw new HttpException('Incorrect Password', HttpStatus.BAD_REQUEST);
     }
     const token = this.generateJwt(
       checkUser.userId,
@@ -64,54 +73,88 @@ export class UserService {
     res.clearCookie('userlogoutcookie');
     res.end('User logged out sucessfuly');
   }
-  async getEmployee(req) {
-    try {
-      const ver = await this.jwtService.verify(req.cookies.userlogoutcookie);
 
-      if (!ver) {
-        throw new HttpException('Unauthorized admin User error ', 401);
+  async getEmployee(req) :Promise<user[]>{
+    try {
+      const verifyUser = await this.jwtService.verify(
+        req.cookies.userlogoutcookie,
+      );
+
+      if (!verifyUser) {
+        throw new HttpException(
+          'Unauthorized  User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
       return this.userModel.find().exec();
     } catch (error) {
-      console.log(error.message);
-      throw new HttpException('Login again ,Admin user Not found', 404);
+      throw new HttpException(error.message, error.status);
     }
   }
-  public async forgotPassword(body, req, res) {
+
+  public async forgotPassword(body, req, res) :Promise<void>{
     this.userModel.find({ email: req.body.email }, (error, user) => {
       if (user) {
         const payload2 = { email: user[0].email, name: user[0].name };
         const token2 = this.jwtService.sign(payload2, {
           expiresIn: '15m',
         });
-        res.cookie('reset-password-cookie', token2);
-        const link = `http://localhost:4000/user/reset-password?pa=${user[0].password}`;
+        res.cookie('resetPasswordCookie', token2);
+        const link = `http://localhost:3000/user/reset-password?hash=${user[0].password}`;
         console.log(link);
         res.end('Reset password link is sent to mail');
       }
     });
   }
+
+  public async resetPassword(body, req, res, query) :Promise<void>{
+    const user = this.userModel.find({
+      password: query.hash,
+    });
+    user
+      .then(async (user) => {
+        if (user) {
+          const verify = this.jwtService.verify(
+            req.cookies.resetPasswordCookie,
+          );
+          if (verify) {
+            const updatePass = await bcrypt.hash(req.body.password, 10);
+            const result = this.userModel.findOneAndUpdate(
+              { email: verify.email },
+              { $set: { password: updatePass } },
+            );
+            res.clearCookie('reset_password_cookie');
+            result.then(res.send('password updated please login again'));
+          }
+        }
+      })
+      .catch((error) => {
+        res.send(error.message);
+      });
+  }
+
   async getEmployeeByEmail(req: any, res: any, Email: string) {
     try {
       const verifyUser = await this.jwtService.verify(
         req.cookies.userlogoutcookie,
       );
       if (!verifyUser) {
-        throw new HttpException('Unautorized Admin ', 401);
+        throw new HttpException('Unauhorized', HttpStatus.UNAUTHORIZED);
       }
       return this.userModel.findOne({ email: Email }).exec();
     } catch (error) {
-      throw new HttpException('Login again ,Admin user Not found', 404);
+      throw new HttpException(error.message, error.status);
     }
   }
 
-  //Update data by User
-  async updateEmployee(req, res, Email: string, userDto: UserDto) {
+  async updateEmployee(req, res, Email: string, userDto: UserDto) :Promise<void>{
     try {
-      const ver = this.jwtService.verify(req.cookies.userlogoutcookie);
-      //console.log(ver);
-      if (!ver) {
-        throw new HttpException('Unauthorized admin User error ', 401);
+      const verifyUser = this.jwtService.verify(req.cookies.userlogoutcookie);
+      if (!verifyUser) {
+        throw new HttpException(
+          'Unauthorized User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
       const existUser = await this.userModel.findOneAndUpdate(
         { email: Email },
@@ -128,18 +171,24 @@ export class UserService {
         },
       );
       if (!existUser) {
-        throw new HttpException('Invalid User Email', 404);
+        throw new HttpException(
+          'Invalid User Email',
+          HttpStatus.NON_AUTHORITATIVE_INFORMATION,
+        );
       }
     } catch (error) {
-      throw new HttpException('Login again ,Admin user Not found', 404);
+      throw new HttpException(error.message, error.status);
     }
   }
-  async updateEmployeeUser(req, res, Email: string, employeeDto:EmployeeDto) {
+
+  async updateEmployeeUser(req, res, Email: string, employeeDto: EmployeeDto) :Promise<void>{
     try {
-      const ver = this.jwtService.verify(req.cookies.userlogoutcookie);
-      //console.log(ver);
-      if (!ver) {
-        throw new HttpException('Unauthorized admin User error ', 401);
+      const verifyUser = this.jwtService.verify(req.cookies.userlogoutcookie);
+      if (!verifyUser) {
+        throw new HttpException(
+          'Unauthorized User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
       const existUser = await this.userModel.findOneAndUpdate(
         { email: Email },
@@ -151,10 +200,251 @@ export class UserService {
         },
       );
       if (!existUser) {
-        throw new HttpException('Invalid User Email', 404);
+        throw new HttpException('Invalid User Email', HttpStatus.NOT_FOUND);
       }
     } catch (error) {
-      throw new HttpException('Login again ,Admin user Not found', 404);
+      throw new HttpException(error.message, error.status);
+    }
+  }
+
+  async applyLeave(req, leaveDto: leaveDto):Promise<leaveDto> {
+    try {
+      const verifyUser = await this.jwtService.verify(
+        req.cookies.userlogoutcookie,
+      );
+
+      if (!verifyUser) {
+        throw new HttpException(
+          'Unauthorized  User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+      if ('status' in leaveDto) {
+        throw new HttpException(
+          ' `Status` access in forbidden',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+      const user = await this.userModel
+        .findOne({ email: verifyUser.Email })
+        .exec();
+      if (
+        !new Date(leaveDto.leaveDate).getTime() ||
+        leaveDto.leaveDate.length < 10
+      ) {
+        throw new HttpException(
+          ' `leaveDate` must be in the format yyyy/mm/dd',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      const newDate = new Date(leaveDto.leaveDate);
+      if (newDate.getTime() < Date.now() || user.availableLeaves < 1) {
+        throw new HttpException(
+          'Cannot apply leave for older dates or No leaves available',
+          HttpStatus.NOT_ACCEPTABLE,
+        );
+      }
+      const leaveExist = await this.leaveModel.findOne({
+        email: verifyUser.Email,
+        leaveDate: newDate.toISOString(),
+      });
+      if (leaveExist) {
+        throw new HttpException(`Leave already exists`, HttpStatus.OK);
+      }
+      const newLeave = await new this.leaveModel({
+        email: verifyUser.Email,
+        leaveDate: newDate.toISOString(),
+      });
+      return await newLeave.save();
+    } catch (error) {
+      throw new HttpException(error.message, error.status);
+    }
+  }
+
+  async viewLeaves(req) :Promise<leaveDto[]>{
+    try {
+      const verifyUser = await this.jwtService.verify(
+        req.cookies.userlogoutcookie,
+      );
+      if (!verifyUser) {
+        throw new HttpException(
+          'Unauthorized  User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+      return this.leaveModel.find().exec();
+    } catch (error) {
+      throw new HttpException(error.message, error.status);
+    }
+  }
+
+  async viewPendingLeave(req, status: string, res) :Promise<void>{
+    try {
+      const verifyUser = this.jwtService.verify(req.cookies.userlogoutcookie);
+      if (!verifyUser) {
+        throw new HttpException(
+          'Unauthorized  User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+      const existUser = await this.leaveModel
+        .find({
+          status: status,
+        })
+        .exec();
+      if (!existUser) {
+        throw new HttpException('Invalid User ', HttpStatus.NOT_FOUND);
+      }
+
+      res.status(200).json({
+        message: `Details of user with status ${status}`,
+        result: existUser,
+      });
+    } catch (error) {
+      throw new HttpException(error.message, error.status);
+    }
+  }
+
+  async viewLeave(req, res) :Promise<void>{
+    try {
+      const verifyUser = this.jwtService.verify(req.cookies.userlogoutcookie);
+      if (!verifyUser) {
+        throw new HttpException(
+          'Unauthorized  User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+      const existUser = await this.leaveModel
+        .find({
+          email: verifyUser.Email,
+        })
+        .exec();
+      if (!existUser) {
+        throw new HttpException('Invalid User ', HttpStatus.NOT_FOUND);
+      }
+      res.status(HttpStatus.OK).json({
+        message: `Details of user with status ${verifyUser.Email}`,
+        result: existUser,
+      });
+    } catch (error) {
+      throw new HttpException(error.message, error.status);
+    }
+  }
+
+  async viewPendingLeaveOfUser(req, Email: string, res) :Promise<void>{
+    try {
+      const verifyUser = this.jwtService.verify(req.cookies.userlogoutcookie);
+      if (!verifyUser) {
+        throw new HttpException(
+          'Unauthorized  User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+      const existUser = await this.leaveModel
+        .find(
+          {
+            status: 'Pending',
+            email: Email,
+          },
+          userProjection,
+        )
+        .exec();
+      if (!existUser) {
+        throw new HttpException('Invalid User ', HttpStatus.NOT_FOUND);
+      } else if (existUser.length == 0) {
+        throw new HttpException(
+          'no Pending leaves or invalid email',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      res.status(200).json({
+        message: `Details of user with email ${Email}`,
+        result: existUser,
+      });
+    } catch (error) {
+      throw new HttpException(error.message, error.status);
+    }
+  }
+
+  async approveLeave(Email: string, date: string[], res, req) :Promise<void>{
+    try {
+      const verifyUser = await this.jwtService.verify(
+        req.cookies.userlogoutcookie,
+      );
+      const emp = await this.userModel.findOne({
+        email: Email,
+      });
+      if (!verifyUser) {
+        throw new HttpException(
+          'Unauthorized  User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+      for (let i = 0; i < date.length; i++) {
+        const newDate = new Date(date[i]);
+        const user = await this.leaveModel.findOneAndUpdate(
+          { email: Email, leaveDate: newDate.toISOString(), status: 'Pending' },
+          { $set: { status: 'Approved' } },
+        );
+        if (user) {
+          emp.availableLeaves = emp.availableLeaves - 1;
+        }
+      }
+      emp.save();
+    } catch (error) {
+      throw new HttpException(error.message, error.status);
+    }
+  }
+
+  async deleteUser(Email: string, req) :Promise<user>{
+    try {
+      const verifyUser = await this.jwtService.verify(
+        req.cookies.userlogoutcookie,
+      );
+
+      if (!verifyUser) {
+        throw new HttpException(
+          'Unauthorized  User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+      const existUser = await this.userModel.findOneAndUpdate(
+        { email: Email },
+        { $set: { status: 'Inactive' } },
+      );
+
+      if (!existUser) {
+        throw new HttpException('Invalid User Email', HttpStatus.NOT_FOUND);
+      }
+      return existUser;
+    } catch (error) {
+      throw new HttpException(error.message, error.status);
+    }
+  }
+
+  async activateUser(Email: string, req) :Promise<user>{
+    try {
+      const verifyUser = await this.jwtService.verify(
+        req.cookies.userlogoutcookie,
+      );
+
+      if (!verifyUser) {
+        throw new HttpException(
+          'Unauthorized  User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+      const existUser = await this.userModel.findOneAndUpdate(
+        { email: Email },
+        { $set: { status: 'Active' } },
+      );
+
+      if (!existUser) {
+        throw new HttpException('Invalid User Email', HttpStatus.NOT_FOUND);
+      }
+      return existUser;
+    } catch (error) {
+      throw new HttpException(error.message, error.status);
     }
   }
 }
