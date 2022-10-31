@@ -69,7 +69,7 @@ export class UserService {
     });
   }
 
-  public async logout(res) {
+  public async logout(res) :Promise<void>{
     res.clearCookie('userlogoutcookie');
     res.end('User logged out sucessfuly');
   }
@@ -133,7 +133,7 @@ export class UserService {
       });
   }
 
-  async getEmployeeByEmail(req: any, res: any, Email: string) {
+  async getEmployeeByEmail(req: any, res: any, Email: string):Promise<user> {
     try {
       const verifyUser = await this.jwtService.verify(
         req.cookies.userlogoutcookie,
