@@ -18,7 +18,25 @@ export class UserService {
     @InjectModel('Leave') private readonly leaveModel: Model<leaveDocument>,
   ) {}
 
-  async create(userDto: UserDto):Promise<UserDto> {
+  functionVerify = async (token: string | undefined) => {
+    try {
+      if (token === undefined) {
+        throw new HttpException('Please Login Again ', HttpStatus.NOT_FOUND);
+      }
+      const verifyUser = await this.jwtService.verify(token);
+      if (!verifyUser) {
+        throw new HttpException(
+          'Unauthorized  User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+      return verifyUser;
+    } catch (error) {
+      throw new HttpException(error.message, error.status);
+    }
+  };
+
+  async create(userDto: UserDto): Promise<UserDto> {
     const existingUser = await this.userModel.findOne({
       email: userDto.email,
     });
@@ -26,8 +44,8 @@ export class UserService {
       throw new HttpException('Email taken', HttpStatus.FORBIDDEN);
     }
     const createdUser = new this.userModel(userDto);
-
-    createdUser.password = await bcrypt.hash(createdUser.password, 10);
+    const salt = await bcrypt.genSalt();
+    createdUser.password = await bcrypt.hash(createdUser.password, salt);
     return await createdUser.save();
   }
 
@@ -74,25 +92,16 @@ export class UserService {
     res.end('User logged out sucessfuly');
   }
 
-  async getEmployee(req) :Promise<user[]>{
+  async getEmployee(req): Promise<user[]> {
     try {
-      const verifyUser = await this.jwtService.verify(
-        req.cookies.userlogoutcookie,
-      );
-
-      if (!verifyUser) {
-        throw new HttpException(
-          'Unauthorized  User error ',
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
+      await this.functionVerify(req.cookies['userlogoutcookie']);
       return this.userModel.find().exec();
     } catch (error) {
       throw new HttpException(error.message, error.status);
     }
   }
 
-  public async forgotPassword(body, req, res) :Promise<void>{
+  public async forgotPassword(body, req, res): Promise<void> {
     this.userModel.find({ email: req.body.email }, (error, user) => {
       if (user) {
         const payload2 = { email: user[0].email, name: user[0].name };
@@ -107,7 +116,7 @@ export class UserService {
     });
   }
 
-  public async resetPassword(body, req, res, query) :Promise<void>{
+  public async resetPassword(body, req, res, query): Promise<void> {
     const user = this.userModel.find({
       password: query.hash,
     });
@@ -135,27 +144,21 @@ export class UserService {
 
   async getEmployeeByEmail(req: any, res: any, Email: string) {
     try {
-      const verifyUser = await this.jwtService.verify(
-        req.cookies.userlogoutcookie,
-      );
-      if (!verifyUser) {
-        throw new HttpException('Unauhorized', HttpStatus.UNAUTHORIZED);
-      }
+      await this.functionVerify(req.cookies['userlogoutcookie']);
       return this.userModel.findOne({ email: Email }).exec();
     } catch (error) {
       throw new HttpException(error.message, error.status);
     }
   }
 
-  async updateEmployee(req, res, Email: string, userDto: UserDto) :Promise<void>{
+  async updateEmployee(
+    req,
+    res,
+    Email: string,
+    userDto: UserDto,
+  ): Promise<void> {
     try {
-      const verifyUser = this.jwtService.verify(req.cookies.userlogoutcookie);
-      if (!verifyUser) {
-        throw new HttpException(
-          'Unauthorized User error ',
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
+      await this.functionVerify(req.cookies['userlogoutcookie']);
       const existUser = await this.userModel.findOneAndUpdate(
         { email: Email },
         {
@@ -181,15 +184,14 @@ export class UserService {
     }
   }
 
-  async updateEmployeeUser(req, res, Email: string, employeeDto: EmployeeDto) :Promise<void>{
+  async updateEmployeeUser(
+    req,
+    res,
+    Email: string,
+    employeeDto: EmployeeDto,
+  ): Promise<void> {
     try {
-      const verifyUser = this.jwtService.verify(req.cookies.userlogoutcookie);
-      if (!verifyUser) {
-        throw new HttpException(
-          'Unauthorized User error ',
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
+      await this.functionVerify(req.cookies['userlogoutcookie']);
       const existUser = await this.userModel.findOneAndUpdate(
         { email: Email },
         {
@@ -207,18 +209,11 @@ export class UserService {
     }
   }
 
-  async applyLeave(req, leaveDto: leaveDto):Promise<leaveDto> {
+  async applyLeave(req, leaveDto: leaveDto): Promise<leaveDto> {
     try {
-      const verifyUser = await this.jwtService.verify(
-        req.cookies.userlogoutcookie,
+      const verifyUser = await this.functionVerify(
+        req.cookies['userlogoutcookie'],
       );
-
-      if (!verifyUser) {
-        throw new HttpException(
-          'Unauthorized  User error ',
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
       if ('status' in leaveDto) {
         throw new HttpException(
           ' `Status` access in forbidden',
@@ -261,32 +256,18 @@ export class UserService {
     }
   }
 
-  async viewLeaves(req) :Promise<leaveDto[]>{
+  async viewLeaves(req): Promise<leaveDto[]> {
     try {
-      const verifyUser = await this.jwtService.verify(
-        req.cookies.userlogoutcookie,
-      );
-      if (!verifyUser) {
-        throw new HttpException(
-          'Unauthorized  User error ',
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
+      await this.functionVerify(req.cookies['userlogoutcookie']);
       return this.leaveModel.find().exec();
     } catch (error) {
       throw new HttpException(error.message, error.status);
     }
   }
 
-  async viewPendingLeave(req, status: string, res) :Promise<void>{
+  async viewPendingLeave(req, status: string, res): Promise<void> {
     try {
-      const verifyUser = this.jwtService.verify(req.cookies.userlogoutcookie);
-      if (!verifyUser) {
-        throw new HttpException(
-          'Unauthorized  User error ',
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
+      await this.functionVerify(req.cookies['userlogoutcookie']);
       const existUser = await this.leaveModel
         .find({
           status: status,
@@ -305,15 +286,11 @@ export class UserService {
     }
   }
 
-  async viewLeave(req, res) :Promise<void>{
+  async viewLeave(req, res): Promise<void> {
     try {
-      const verifyUser = this.jwtService.verify(req.cookies.userlogoutcookie);
-      if (!verifyUser) {
-        throw new HttpException(
-          'Unauthorized  User error ',
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
+      const verifyUser = await this.functionVerify(
+        req.cookies['userlogoutcookie'],
+      );
       const existUser = await this.leaveModel
         .find({
           email: verifyUser.Email,
@@ -331,15 +308,9 @@ export class UserService {
     }
   }
 
-  async viewPendingLeaveOfUser(req, Email: string, res) :Promise<void>{
+  async viewPendingLeaveOfUser(req, Email: string, res): Promise<void> {
     try {
-      const verifyUser = this.jwtService.verify(req.cookies.userlogoutcookie);
-      if (!verifyUser) {
-        throw new HttpException(
-          'Unauthorized  User error ',
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
+      await this.functionVerify(req.cookies['userlogoutcookie']);
       const existUser = await this.leaveModel
         .find(
           {
@@ -366,20 +337,12 @@ export class UserService {
     }
   }
 
-  async approveLeave(Email: string, date: string[], res, req) :Promise<void>{
+  async approveLeave(Email: string, date: string[], res, req): Promise<void> {
     try {
-      const verifyUser = await this.jwtService.verify(
-        req.cookies.userlogoutcookie,
-      );
+      await this.functionVerify(req.cookies['userlogoutcookie']);
       const emp = await this.userModel.findOne({
         email: Email,
       });
-      if (!verifyUser) {
-        throw new HttpException(
-          'Unauthorized  User error ',
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
       for (let i = 0; i < date.length; i++) {
         const newDate = new Date(date[i]);
         const user = await this.leaveModel.findOneAndUpdate(
@@ -396,18 +359,9 @@ export class UserService {
     }
   }
 
-  async deleteUser(Email: string, req) :Promise<user>{
+  async deleteUser(Email: string, req): Promise<user> {
     try {
-      const verifyUser = await this.jwtService.verify(
-        req.cookies.userlogoutcookie,
-      );
-
-      if (!verifyUser) {
-        throw new HttpException(
-          'Unauthorized  User error ',
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
+      await this.functionVerify(req.cookies['userlogoutcookie']);
       const existUser = await this.userModel.findOneAndUpdate(
         { email: Email },
         { $set: { status: 'Inactive' } },
@@ -422,18 +376,9 @@ export class UserService {
     }
   }
 
-  async activateUser(Email: string, req) :Promise<user>{
+  async activateUser(Email: string, req): Promise<user> {
     try {
-      const verifyUser = await this.jwtService.verify(
-        req.cookies.userlogoutcookie,
-      );
-
-      if (!verifyUser) {
-        throw new HttpException(
-          'Unauthorized  User error ',
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
+      await this.functionVerify(req.cookies['userlogoutcookie']);
       const existUser = await this.userModel.findOneAndUpdate(
         { email: Email },
         { $set: { status: 'Active' } },

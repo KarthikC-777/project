@@ -7,6 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from './entities/roles.decorator';
 import { JwtService } from '@nestjs/jwt';
+import { HttpStatus } from '@nestjs/common';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -20,16 +21,21 @@ export class RolesGuard implements CanActivate {
     if (!requiredRoles) {
       return true;
     }
-    console.log(requiredRoles);
     try {
       const request = context.switchToHttp().getRequest();
+      if (request.cookies['userlogoutcookie'] === undefined) {
+        throw new HttpException('please Login again ', HttpStatus.UNAUTHORIZED);
+      }
       const verify = this.jwtService.verify(request.cookies.userlogoutcookie);
       if (!verify) {
-        throw new HttpException('Unauthorized admin User error ', 401);
+        throw new HttpException(
+          'Unauthorized admin User error ',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
       return requiredRoles.some((role) => verify.role?.includes(role));
     } catch (error) {
-      throw new HttpException(error.message, 404);
+      throw new HttpException(error.message, error.status);
     }
   }
 }
