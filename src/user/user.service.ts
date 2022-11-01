@@ -36,47 +36,67 @@ export class UserService {
     }
   };
 
-  async create(userDto: UserDto): Promise<UserDto> {
-    const existingUser = await this.userModel.findOne({
-      email: userDto.email,
-    });
-    if (existingUser) {
-      throw new HttpException('Email taken', HttpStatus.FORBIDDEN);
+  async signup(userDto: UserDto): Promise<UserDto> {
+    try {
+      const existingUser = await this.userModel.findOne({
+        email: userDto.email,
+      });
+      if (existingUser) {
+        throw new HttpException('Email taken', HttpStatus.CONFLICT);
+      }
+      const createdUser = new this.userModel(userDto);
+      const salt = await bcrypt.genSalt();
+      createdUser.password = await bcrypt.hash(createdUser.password, salt);
+      return await createdUser.save();
+    } catch (error) {
+      throw new HttpException(error.message, error.status);
     }
-    const createdUser = new this.userModel(userDto);
-    const salt = await bcrypt.genSalt();
-    createdUser.password = await bcrypt.hash(createdUser.password, salt);
-    return await createdUser.save();
   }
 
-  async loginUser(userDto: UserDto, res): Promise<string> {
-    const checkUser = await this.userModel.findOne({
-      email: userDto.email,
-    });
-    if (!checkUser) {
-      throw new HttpException(
-        'Incorrect Email',
-        HttpStatus.NON_AUTHORITATIVE_INFORMATION,
+  async signin(req, userDto: UserDto, res): Promise<string> {
+    try {
+      if (req.cookies['userlogoutcookie'] !== undefined) {
+        const checkAlredySignin = await this.functionVerify(
+          req.cookies['userlogoutcookie'],
+        );
+        console.log(checkAlredySignin.Email);
+        if (checkAlredySignin.Email === userDto.email) {
+          throw new HttpException(
+            'You are already signed In',
+            HttpStatus.FORBIDDEN,
+          );
+        }
+      }
+      const checkUser = await this.userModel.findOne({
+        email: userDto.email,
+      });
+      if (!checkUser) {
+        throw new HttpException(
+          'Incorrect Email',
+          HttpStatus.NON_AUTHORITATIVE_INFORMATION,
+        );
+      }
+      if (checkUser.status == 'Inactive') {
+        throw new HttpException('Employee Not found', HttpStatus.NOT_FOUND);
+      }
+      const passwordCheck = await bcrypt.compare(
+        userDto.password,
+        checkUser.password,
       );
+      if (!passwordCheck) {
+        throw new HttpException('Incorrect Password', HttpStatus.BAD_REQUEST);
+      }
+      const token = this.generateJwt(
+        checkUser.userId,
+        checkUser.name,
+        checkUser.email,
+        checkUser.role,
+      );
+      res.cookie('userlogoutcookie', token);
+      return token;
+    } catch (error) {
+      throw new HttpException(error.message, error.status);
     }
-    if (checkUser.status == 'Inactive') {
-      throw new HttpException('Employee Not found', HttpStatus.NOT_FOUND);
-    }
-    const passwordCheck = await bcrypt.compare(
-      userDto.password,
-      checkUser.password,
-    );
-    if (!passwordCheck) {
-      throw new HttpException('Incorrect Password', HttpStatus.BAD_REQUEST);
-    }
-    const token = this.generateJwt(
-      checkUser.userId,
-      checkUser.name,
-      checkUser.email,
-      checkUser.role,
-    );
-    res.cookie('userlogoutcookie', token);
-    return token;
   }
   generateJwt(userId: string, name: string, email: string, role: string[]) {
     return this.jwtService.sign({
@@ -87,9 +107,19 @@ export class UserService {
     });
   }
 
-  public async logout(res) {
-    res.clearCookie('userlogoutcookie');
-    res.end('User logged out sucessfuly');
+  public async signout(req, res) {
+    try {
+      if (req.cookies['userlogoutcookie'] === undefined) {
+        throw new HttpException(
+          'You are already signed out',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+      res.clearCookie('userlogoutcookie');
+      res.end('User signed out successfully');
+    } catch (error) {
+      throw new HttpException(error.message, error.status);
+    }
   }
 
   async getEmployee(req): Promise<user[]> {
@@ -179,12 +209,15 @@ export class UserService {
           HttpStatus.NON_AUTHORITATIVE_INFORMATION,
         );
       }
+      if (existUser) {
+        throw new HttpException('Email already in use ', HttpStatus.CONFLICT);
+      }
     } catch (error) {
       throw new HttpException(error.message, error.status);
     }
   }
 
-  async updateEmployeeUser(
+  async updateOwnInfo(
     req,
     res,
     Email: string,
@@ -204,6 +237,10 @@ export class UserService {
       if (!existUser) {
         throw new HttpException('Invalid User Email', HttpStatus.NOT_FOUND);
       }
+      if (existUser) {
+        throw new HttpException('Email already in use', HttpStatus.CONFLICT);
+      }
+      
     } catch (error) {
       throw new HttpException(error.message, error.status);
     }
@@ -256,7 +293,7 @@ export class UserService {
     }
   }
 
-  async viewLeaves(req): Promise<leaveDto[]> {
+  async checkEmployeeLeave(req): Promise<leaveDto[]> {
     try {
       await this.functionVerify(req.cookies['userlogoutcookie']);
       return this.leaveModel.find().exec();
@@ -265,7 +302,7 @@ export class UserService {
     }
   }
 
-  async viewPendingLeave(req, status: string, res): Promise<void> {
+  async viewEmployeePendingLeave(req, status: string, res): Promise<void> {
     try {
       await this.functionVerify(req.cookies['userlogoutcookie']);
       const existUser = await this.leaveModel
@@ -286,7 +323,7 @@ export class UserService {
     }
   }
 
-  async viewLeave(req, res): Promise<void> {
+  async viewOwnLeave(req, res): Promise<void> {
     try {
       const verifyUser = await this.functionVerify(
         req.cookies['userlogoutcookie'],
@@ -308,7 +345,11 @@ export class UserService {
     }
   }
 
-  async viewPendingLeaveOfUser(req, Email: string, res): Promise<void> {
+  async viewEmployeePendingLeaveByEmail(
+    req,
+    Email: string,
+    res,
+  ): Promise<void> {
     try {
       await this.functionVerify(req.cookies['userlogoutcookie']);
       const existUser = await this.leaveModel
@@ -337,7 +378,12 @@ export class UserService {
     }
   }
 
-  async approveLeave(Email: string, date: string[], res, req): Promise<void> {
+  async approveEmployeeLeave(
+    Email: string,
+    date: string[],
+    res,
+    req,
+  ): Promise<void> {
     try {
       await this.functionVerify(req.cookies['userlogoutcookie']);
       const emp = await this.userModel.findOne({
@@ -359,7 +405,7 @@ export class UserService {
     }
   }
 
-  async deleteUser(Email: string, req): Promise<user> {
+  async deactivateEmployee(Email: string, req): Promise<user> {
     try {
       await this.functionVerify(req.cookies['userlogoutcookie']);
       const existUser = await this.userModel.findOneAndUpdate(
@@ -376,7 +422,7 @@ export class UserService {
     }
   }
 
-  async activateUser(Email: string, req): Promise<user> {
+  async activateEmployee(Email: string, req): Promise<user> {
     try {
       await this.functionVerify(req.cookies['userlogoutcookie']);
       const existUser = await this.userModel.findOneAndUpdate(
