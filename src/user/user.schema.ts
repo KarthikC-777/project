@@ -37,10 +37,13 @@ export class user {
   @Prop({})
   designation: string;
 
-  @Prop({ default: 'active' })
-  status: string;
+  @Prop({ default: true })
+  status: boolean;
 
   @Prop({ required: true, default: 10 })
   availableLeaves: number;
+
+  @Prop({ required: false, default: 0 })
+  resetToken: string;
 }
 export const userSchema = SchemaFactory.createForClass(user);

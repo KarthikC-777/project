@@ -18,6 +18,7 @@ import { Roles } from './entities/roles.decorator';
 import { UserRole } from './user.schema';
 import { UserService } from './user.service';
 import { HttpStatus } from '@nestjs/common';
+import { loginDto } from './dto/login.dto';
 
 @Controller('user')
 export class UserController {
@@ -34,7 +35,7 @@ export class UserController {
 
   //For login Input:json{email,password}
   @Post('login')
-  async signin(@Req() req, @Res() res, @Body() userDto: UserDto) {
+  async signin(@Req() req, @Res() res, @Body() userDto: loginDto) {
     res.status(HttpStatus.OK).json({
       message: 'Signed in Succesfully',
       JWT: await this.userService.signin(req, userDto, res),
@@ -121,7 +122,7 @@ export class UserController {
     @Body() body: { email: string; password: string },
     @Req() req: Request,
     @Res() res: Response,
-    @Query() query: { hash: string },
+    @Query() query: { resetId: string },
   ) {
     this.userService.resetPassword(body, req, res, query);
   }

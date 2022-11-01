@@ -1,6 +1,11 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 export type leaveDocument = leave & Document;
 
+export enum statusEnum {
+  false = 'Pending',
+  true = 'Approved',
+}
+
 @Schema()
 export class leave {
   @Prop({})
@@ -9,8 +14,8 @@ export class leave {
   @Prop({ required: true })
   leaveDate: string;
 
-  @Prop({ default: 'Pending' })
-  status: string;
+  @Prop({ default: false })
+  status: boolean;
 }
 
 export const leaveschema = SchemaFactory.createForClass(leave);

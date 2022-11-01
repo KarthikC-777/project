@@ -5,8 +5,10 @@ import { UserDto, EmployeeDto } from './dto/user.dto';
 import { user, userDocument } from './user.schema';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-import { leave, leaveDocument } from './leave.schema';
+import { leave, leaveDocument, statusEnum } from './leave.schema';
 import { leaveDto } from './dto/leave.dto';
+import { randomBytes } from 'crypto';
+import { loginDto } from './dto/login.dto';
 const userProjection = { __v: false, _id: false, email: false };
 
 @Injectable()
@@ -42,7 +44,7 @@ export class UserService {
         email: userDto.email,
       });
       if (existingUser) {
-        throw new HttpException('Email taken', HttpStatus.CONFLICT);
+        throw new HttpException('Email already taken', HttpStatus.CONFLICT);
       }
       const createdUser = new this.userModel(userDto);
       const salt = await bcrypt.genSalt();
@@ -53,13 +55,12 @@ export class UserService {
     }
   }
 
-  async signin(req, userDto: UserDto, res): Promise<string> {
+  async signin(req, userDto: loginDto, res): Promise<string> {
     try {
       if (req.cookies['userlogoutcookie'] !== undefined) {
         const checkAlredySignin = await this.functionVerify(
           req.cookies['userlogoutcookie'],
         );
-        console.log(checkAlredySignin.Email);
         if (checkAlredySignin.Email === userDto.email) {
           throw new HttpException(
             'You are already signed In',
@@ -76,7 +77,7 @@ export class UserService {
           HttpStatus.NON_AUTHORITATIVE_INFORMATION,
         );
       }
-      if (checkUser.status == 'Inactive') {
+      if (checkUser.status == false) {
         throw new HttpException('Employee Not found', HttpStatus.NOT_FOUND);
       }
       const passwordCheck = await bcrypt.compare(
@@ -132,44 +133,49 @@ export class UserService {
   }
 
   public async forgotPassword(body, req, res): Promise<void> {
-    this.userModel.find({ email: req.body.email }, (error, user) => {
-      if (user) {
-        const payload2 = { email: user[0].email, name: user[0].name };
-        const token2 = this.jwtService.sign(payload2, {
-          expiresIn: '15m',
-        });
-        res.cookie('resetPasswordCookie', token2);
-        const link = `http://localhost:3000/user/reset-password?hash=${user[0].password}`;
-        console.log(link);
-        res.end('Reset password link is sent to mail');
-      }
-    });
+    try {
+      this.userModel.findOne({ email: req.body.email }, async (error, data) => {
+        if (error) throw error;
+        const salt = await bcrypt.genSalt();
+        const resetHash = await bcrypt.hash(
+          randomBytes(32).toString('hex'),
+          salt,
+        );
+        await this.userModel.updateOne(
+          { email: data.email },
+          { resetToken: resetHash },
+        );
+        res.send(
+          `http://localhost:3000/user/reset-password?resetId=${resetHash}`,
+        );
+      });
+    } catch (error) {
+      throw new HttpException(error.message, error.status);
+    }
   }
 
-  public async resetPassword(body, req, res, query): Promise<void> {
-    const user = this.userModel.find({
-      password: query.hash,
-    });
-    user
-      .then(async (user) => {
-        if (user) {
-          const verify = this.jwtService.verify(
-            req.cookies.resetPasswordCookie,
+  public async resetPassword(body, req, res, query) {
+    try {
+      this.userModel.findOne(
+        { resetToken: query.resetId },
+        async (error, data) => {
+          if (error) throw error;
+          const salt = await bcrypt.genSalt();
+          const newPassword = await bcrypt.hash(req.body.password, salt);
+          await this.userModel.updateOne(
+            { resetToken: query.resetId },
+            { password: newPassword },
           );
-          if (verify) {
-            const updatePass = await bcrypt.hash(req.body.password, 10);
-            const result = this.userModel.findOneAndUpdate(
-              { email: verify.email },
-              { $set: { password: updatePass } },
-            );
-            res.clearCookie('reset_password_cookie');
-            result.then(res.send('password updated please login again'));
-          }
-        }
-      })
-      .catch((error) => {
-        res.send(error.message);
-      });
+          await this.userModel.updateOne(
+            { resetToken: query.resetId },
+            { resetToken: 0 },
+          );
+          res.send('password updated successfuly login agin');
+        },
+      );
+    } catch (error) {
+      throw new HttpException(error.message, error.status);
+    }
   }
 
   async getEmployeeByEmail(req: any, res: any, Email: string) {
@@ -198,7 +204,6 @@ export class UserService {
           phonenumber: userDto.phonenumber,
           salary: userDto.salary,
           designation: userDto.designation,
-          status: userDto.status,
           address: userDto.address,
           availableLeaves: userDto.availableLeaves,
         },
@@ -240,7 +245,6 @@ export class UserService {
       if (existUser) {
         throw new HttpException('Email already in use', HttpStatus.CONFLICT);
       }
-      
     } catch (error) {
       throw new HttpException(error.message, error.status);
     }
@@ -302,20 +306,22 @@ export class UserService {
     }
   }
 
-  async viewEmployeePendingLeave(req, status: string, res): Promise<void> {
+  async viewEmployeePendingLeave(req, Status: string, res): Promise<void> {
     try {
       await this.functionVerify(req.cookies['userlogoutcookie']);
+      const statusEnum_key = Object.keys(statusEnum).find(
+        (key) => statusEnum[key] === Status,
+      );
       const existUser = await this.leaveModel
         .find({
-          status: status,
+          status: statusEnum_key,
         })
         .exec();
       if (!existUser) {
         throw new HttpException('Invalid User ', HttpStatus.NOT_FOUND);
       }
-
       res.status(200).json({
-        message: `Details of user with status ${status}`,
+        message: `Details of user with status ${Status}`,
         result: existUser,
       });
     } catch (error) {
@@ -355,7 +361,7 @@ export class UserService {
       const existUser = await this.leaveModel
         .find(
           {
-            status: 'Pending',
+            status: false,
             email: Email,
           },
           userProjection,
@@ -392,8 +398,8 @@ export class UserService {
       for (let i = 0; i < date.length; i++) {
         const newDate = new Date(date[i]);
         const user = await this.leaveModel.findOneAndUpdate(
-          { email: Email, leaveDate: newDate.toISOString(), status: 'Pending' },
-          { $set: { status: 'Approved' } },
+          { email: Email, leaveDate: newDate.toISOString(), status: false },
+          { $set: { status: true } },
         );
         if (user) {
           emp.availableLeaves = emp.availableLeaves - 1;
@@ -410,7 +416,7 @@ export class UserService {
       await this.functionVerify(req.cookies['userlogoutcookie']);
       const existUser = await this.userModel.findOneAndUpdate(
         { email: Email },
-        { $set: { status: 'Inactive' } },
+        { $set: { status: false } },
       );
 
       if (!existUser) {
@@ -427,7 +433,7 @@ export class UserService {
       await this.functionVerify(req.cookies['userlogoutcookie']);
       const existUser = await this.userModel.findOneAndUpdate(
         { email: Email },
-        { $set: { status: 'Active' } },
+        { $set: { status: true } },
       );
 
       if (!existUser) {
