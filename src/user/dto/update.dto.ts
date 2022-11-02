@@ -7,22 +7,12 @@ import {
   Length,
   MinLength,
 } from 'class-validator';
-import { UserDesignation, UserRole } from '../user.schema';
+import { UserRole } from '../user.schema';
 
-export class UserDto {
+export class UpdateDto {
   readonly userId: string;
 
   readonly name: string;
-
-  @IsEmail({
-    message: 'Enter a valid email address',
-  })
-  readonly email: string;
-
-  @MinLength(8, {
-    message: 'Password must have a minimum of 8 characters',
-  })
-  readonly password: string;
 
   @IsOptional()
   @Length(10, 10, {
@@ -30,6 +20,7 @@ export class UserDto {
   })
   readonly phonenumber: number;
 
+  @IsOptional()
   @IsNumber()
   readonly salary: number;
 
@@ -49,23 +40,5 @@ export class UserDto {
 
   @IsOptional()
   @IsNumber()
-  @Equals('', {
-    message: 'availableLeaves is not accessible',
-  })
   readonly availableLeaves: number;
-}
-
-export class EmployeeDto {
-  readonly name: string;
-
-  @IsOptional()
-  @IsEmail({
-    message: 'Enter a valid email address',
-  })
-  readonly email: string;
-  readonly phonenumber: number;
-  readonly address: string;
-
-  @IsEnum(UserDesignation)
-  readonly designation: string;
 }

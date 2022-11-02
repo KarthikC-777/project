@@ -2,13 +2,14 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UserDto, EmployeeDto } from './dto/user.dto';
-import { user, userDocument } from './user.schema';
+import { user, userDocument, UserDesignation } from './user.schema';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { leave, leaveDocument, statusEnum } from './leave.schema';
 import { leaveDto } from './dto/leave.dto';
 import { randomBytes } from 'crypto';
-import { loginDto } from './dto/login.dto';
+import { forgotDto, loginDto, resetDto } from './dto/login.dto';
+import { UpdateDto } from './dto/update.dto';
 const userProjection = { __v: false, _id: false, email: false };
 
 @Injectable()
@@ -49,6 +50,7 @@ export class UserService {
       const createdUser = new this.userModel(userDto);
       const salt = await bcrypt.genSalt();
       createdUser.password = await bcrypt.hash(createdUser.password, salt);
+      createdUser.designation = UserDesignation[userDto.designation];
       return await createdUser.save();
     } catch (error) {
       throw new HttpException(error.message, error.status);
@@ -132,43 +134,40 @@ export class UserService {
     }
   }
 
-  public async forgotPassword(body, req, res): Promise<void> {
+  public async forgotPassword(body: forgotDto, req, res): Promise<void> {
     try {
-      this.userModel.findOne({ email: req.body.email }, async (error, data) => {
-        if (error) throw error;
-        const salt = await bcrypt.genSalt();
-        const resetHash = await bcrypt.hash(
-          randomBytes(32).toString('hex'),
-          salt,
-        );
-        await this.userModel.updateOne(
-          { email: data.email },
-          { resetToken: resetHash },
-        );
-        res.send(
-          `http://localhost:3000/user/reset-password?resetId=${resetHash}`,
-        );
-      });
+      const user = await this.userModel.findOne({ email: body.email });
+      if (!user) {
+        res.status(HttpStatus.NOT_FOUND).send('Email not found');
+      }
+      const salt = await bcrypt.genSalt();
+      const resetHash = await bcrypt.hash(
+        randomBytes(32).toString('hex'),
+        salt,
+      );
+      await this.userModel.updateOne(
+        { email: body.email },
+        { resetToken: resetHash },
+      );
+      res.send(
+        `http://localhost:3000/user/reset-password?resetId=${resetHash}`,
+      );
     } catch (error) {
       throw new HttpException(error.message, error.status);
     }
   }
 
-  public async resetPassword(body, req, res, query) {
+  public async resetPassword(body: resetDto, req, res, query) {
     try {
       this.userModel.findOne(
         { resetToken: query.resetId },
         async (error, data) => {
           if (error) throw error;
           const salt = await bcrypt.genSalt();
-          const newPassword = await bcrypt.hash(req.body.password, salt);
+          const newPassword = await bcrypt.hash(body.password, salt);
           await this.userModel.updateOne(
             { resetToken: query.resetId },
-            { password: newPassword },
-          );
-          await this.userModel.updateOne(
-            { resetToken: query.resetId },
-            { resetToken: 0 },
+            { password: newPassword, resetToken: 0 },
           );
           res.send('password updated successfuly login agin');
         },
@@ -191,7 +190,7 @@ export class UserService {
     req,
     res,
     Email: string,
-    userDto: UserDto,
+    userDto: UpdateDto,
   ): Promise<void> {
     try {
       await this.functionVerify(req.cookies['userlogoutcookie']);
@@ -200,10 +199,9 @@ export class UserService {
         {
           userId: userDto.userId,
           name: userDto.name,
-          email: userDto.email,
           phonenumber: userDto.phonenumber,
           salary: userDto.salary,
-          designation: userDto.designation,
+          designation: UserDesignation[userDto.designation],
           address: userDto.address,
           availableLeaves: userDto.availableLeaves,
         },
@@ -214,36 +212,26 @@ export class UserService {
           HttpStatus.NON_AUTHORITATIVE_INFORMATION,
         );
       }
-      if (existUser) {
-        throw new HttpException('Email already in use ', HttpStatus.CONFLICT);
-      }
     } catch (error) {
       throw new HttpException(error.message, error.status);
     }
   }
 
-  async updateOwnInfo(
-    req,
-    res,
-    Email: string,
-    employeeDto: EmployeeDto,
-  ): Promise<void> {
+  async updateOwnInfo(req, res, employeeDto: EmployeeDto): Promise<void> {
     try {
-      await this.functionVerify(req.cookies['userlogoutcookie']);
+      const verifyUser = await this.functionVerify(
+        req.cookies['userlogoutcookie'],
+      );
       const existUser = await this.userModel.findOneAndUpdate(
-        { email: Email },
+        { email: verifyUser.Email },
         {
           name: employeeDto.name,
-          email: employeeDto.email,
           phonenumber: employeeDto.phonenumber,
           address: employeeDto.address,
         },
       );
       if (!existUser) {
         throw new HttpException('Invalid User Email', HttpStatus.NOT_FOUND);
-      }
-      if (existUser) {
-        throw new HttpException('Email already in use', HttpStatus.CONFLICT);
       }
     } catch (error) {
       throw new HttpException(error.message, error.status);

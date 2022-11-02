@@ -18,7 +18,8 @@ import { Roles } from './entities/roles.decorator';
 import { UserRole } from './user.schema';
 import { UserService } from './user.service';
 import { HttpStatus } from '@nestjs/common';
-import { loginDto } from './dto/login.dto';
+import { forgotDto, loginDto, resetDto } from './dto/login.dto';
+import { UpdateDto } from './dto/update.dto';
 
 @Controller('user')
 export class UserController {
@@ -26,6 +27,7 @@ export class UserController {
 
   //For registering employee Input:json{name,email,address,password}
   @Post('register')
+  @Roles(UserRole.Admin)
   async signup(@Res() res, @Body() userDto: UserDto) {
     res.status(HttpStatus.CREATED).json({
       message: 'Successfully Registered',
@@ -79,7 +81,7 @@ export class UserController {
     @Req() req,
     @Res() res,
     @Param('email') Email: string,
-    @Body() userDto: UserDto,
+    @Body() userDto: UpdateDto,
   ) {
     res.status(HttpStatus.OK).json({
       message: `Employee ${Email} updated`,
@@ -88,38 +90,28 @@ export class UserController {
   }
 
   //update employee details Input:json{name,email,address,phonenumber}
-  @Patch('updateEmployeeUser/:email')
+  @Patch('updateEmployeeUser/')
   async updateOwnInfo(
     @Req() req,
     @Res() res,
-    @Param('email') Email: string,
     @Body() employeeDto: EmployeeDto,
   ) {
     res.status(HttpStatus.OK).json({
-      message: `Employee ${Email} updated`,
-      result: await this.userService.updateOwnInfo(
-        req,
-        res,
-        Email,
-        employeeDto,
-      ),
+      message: `Employee  updated`,
+      result: await this.userService.updateOwnInfo(req, res, employeeDto),
     });
   }
 
   //For getting resetpassword link Input:json{email}
   @Post('forgot-password')
-  public async forgotPassword(
-    @Body() body: { email: string; password: string },
-    @Req() req,
-    @Res() res,
-  ) {
-    this.userService.forgotPassword(body, req, res);
+  public async forgotPassword(@Body() body: forgotDto, @Req() req, @Res() res) {
+    res.send(await this.userService.forgotPassword(body, req, res));
   }
 
   //For changing password Input:json{email, password}
   @Put('reset-password')
   public async resetPassword(
-    @Body() body: { email: string; password: string },
+    @Body() body: resetDto,
     @Req() req: Request,
     @Res() res: Response,
     @Query() query: { resetId: string },
@@ -131,7 +123,7 @@ export class UserController {
   @Post('applyLeave')
   async applyLeave(@Req() req, @Body() leaveDto: leaveDto, @Res() res) {
     res.status(HttpStatus.CREATED).json({
-      message: `Leave approved successfully`,
+      message: `Leave applied successfully`,
       result: await this.userService.applyLeave(req, leaveDto),
     });
   }
@@ -156,7 +148,7 @@ export class UserController {
     @Param('email') Email: string,
   ) {
     res.status(HttpStatus.CREATED).json({
-      message: `Leave applied successfully`,
+      message: `Leave approved successfully`,
       result: await this.userService.approveEmployeeLeave(
         Email,
         date,

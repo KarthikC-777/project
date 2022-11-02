@@ -8,6 +8,14 @@ export enum UserRole {
   Admin = 'admin',
 }
 
+export enum UserDesignation {
+  ASE = 'Associate Software Engineer',
+  SE = 'Software Engineer',
+  SSE = 'Senior Software Engineer',
+  EM = 'Engineering Manager',
+  BD = 'Backend Developer',
+}
+
 @Schema()
 export class user {
   @Prop({})
