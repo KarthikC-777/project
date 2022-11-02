@@ -7,7 +7,7 @@ import {
   Length,
   MinLength,
 } from 'class-validator';
-import { UserRole } from '../user.schema';
+import { UserDesignation, UserRole } from '../user.schema';
 
 export class UserDto {
   readonly userId: string;
@@ -32,12 +32,13 @@ export class UserDto {
   @IsNumber()
   readonly salary: number;
 
-  // @IsEnum(UserRole)
+  @IsEnum(UserRole)
   // @Equals('user', {
   //   message: 'role cannot be changed',
   // })
   readonly role: string[];
 
+  @IsEnum(UserDesignation)
   readonly designation: string;
 
   @IsOptional()

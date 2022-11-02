@@ -3,6 +3,14 @@ import { Document } from 'mongoose';
 
 export type userDocument = user & Document;
 
+export enum UserDesignation {
+  ASE = 'ASSOCIATE SOFTWARE ENGINEER',
+  SE = 'SOFTWARE ENGINEER',
+  SSE = 'SENIOR SOFTWARE ENGINEER',
+  EM = 'ENGINEERING MANAGER',
+  BD = 'BACKEND DEVELOPER' ,
+}
+
 export enum UserRole {
   User = 'user',
   Admin = 'admin',
