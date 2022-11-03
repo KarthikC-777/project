@@ -1,12 +1,4 @@
-import {
-  Equals,
-  IsEmail,
-  IsEnum,
-  IsNumber,
-  IsOptional,
-  Length,
-  MinLength,
-} from 'class-validator';
+import { Equals, IsEnum, IsNumber, IsOptional, Length } from 'class-validator';
 import { UserRole } from '../user.schema';
 
 export class UpdateDto {

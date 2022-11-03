@@ -1,14 +1,17 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { UserDto, EmployeeDto } from './dto/user.dto';
+import { UserDto } from './dto/user.dto';
+import { EmployeeDto } from './dto/employee.dto';
 import { user, userDocument, UserDesignation } from './user.schema';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { leave, leaveDocument, statusEnum } from './leave.schema';
 import { leaveDto } from './dto/leave.dto';
 import { randomBytes } from 'crypto';
-import { forgotDto, loginDto, resetDto } from './dto/login.dto';
+import { loginDto } from './dto/login.dto';
+import { forgotDto } from './dto/forgot.dto';
+import { resetDto } from './dto/reset.dto';
 import { UpdateDto } from './dto/update.dto';
 const userProjection = { __v: false, _id: false, email: false };
 
@@ -41,6 +44,12 @@ export class UserService {
 
   async signup(userDto: UserDto): Promise<UserDto> {
     try {
+      const designationKey = Object.keys(UserDesignation).find(
+        (key) => key === userDto.designation,
+      );
+      if (designationKey === undefined) {
+        throw new HttpException('Designation Not Found', HttpStatus.NOT_FOUND);
+      }
       const existingUser = await this.userModel.findOne({
         email: userDto.email,
       });
@@ -193,6 +202,12 @@ export class UserService {
     userDto: UpdateDto,
   ): Promise<void> {
     try {
+      const designationKey = Object.keys(UserDesignation).find(
+        (key) => key === userDto.designation,
+      );
+      if (designationKey === undefined) {
+        throw new HttpException('Designation Not Found', HttpStatus.NOT_FOUND);
+      }
       await this.functionVerify(req.cookies['userlogoutcookie']);
       const existUser = await this.userModel.findOneAndUpdate(
         { email: Email },
@@ -339,11 +354,7 @@ export class UserService {
     }
   }
 
-  async viewEmployeePendingLeaveByEmail(
-    req,
-    Email: string,
-    res,
-  ): Promise<void> {
+  async viewEmployeePendingLeaveByEmail(req, Email: string, res): Promise<any> {
     try {
       await this.functionVerify(req.cookies['userlogoutcookie']);
       const existUser = await this.leaveModel
@@ -359,14 +370,11 @@ export class UserService {
         throw new HttpException('Invalid User ', HttpStatus.NOT_FOUND);
       } else if (existUser.length == 0) {
         throw new HttpException(
-          'no Pending leaves or invalid email',
+          'No Pending leaves or Invalid email',
           HttpStatus.NOT_FOUND,
         );
       }
-      res.status(200).json({
-        message: `Details of user with email ${Email}`,
-        result: existUser,
-      });
+      return existUser;
     } catch (error) {
       throw new HttpException(error.message, error.status);
     }

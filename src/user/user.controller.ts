@@ -11,15 +11,18 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { EmployeeDto, UserDto } from './dto/user.dto';
+import { UserDto } from './dto/user.dto';
+import { EmployeeDto } from './dto/employee.dto';
 import { Request, Response } from 'express';
 import { leaveDto } from './dto/leave.dto';
 import { Roles } from './entities/roles.decorator';
 import { UserRole } from './user.schema';
 import { UserService } from './user.service';
 import { HttpStatus } from '@nestjs/common';
-import { forgotDto, loginDto, resetDto } from './dto/login.dto';
+import { loginDto } from './dto/login.dto';
 import { UpdateDto } from './dto/update.dto';
+import { forgotDto } from './dto/forgot.dto';
+import { resetDto } from './dto/reset.dto';
 
 @Controller('user')
 export class UserController {
@@ -90,7 +93,7 @@ export class UserController {
   }
 
   //update employee details Input:json{name,email,address,phonenumber}
-  @Patch('updateEmployeeUser/')
+  @Patch('updateEmployeeUser')
   async updateOwnInfo(
     @Req() req,
     @Res() res,
@@ -147,15 +150,39 @@ export class UserController {
     @Req() req,
     @Param('email') Email: string,
   ) {
-    res.status(HttpStatus.CREATED).json({
-      message: `Leave approved successfully`,
-      result: await this.userService.approveEmployeeLeave(
-        Email,
-        date,
-        res,
-        req,
-      ),
-    });
+    const existUser = await this.userService.viewEmployeePendingLeaveByEmail(
+      req,
+      Email,
+      res,
+    );
+    let verifyLength = 0;
+    for (let i = 0; i < date.length; i++) {
+      for (let j = 0; j < existUser.length; j++) {
+        if (
+          new Date(date[i]).toISOString() ===
+          new Date(existUser[j]['leaveDate']).toISOString()
+        ) {
+          verifyLength++;
+        }
+      }
+    }
+    if (verifyLength === date.length) {
+      res.status(HttpStatus.CREATED).json({
+        message: `Leave approved successfully`,
+        result: await this.userService.approveEmployeeLeave(
+          Email,
+          date,
+          res,
+          req,
+        ),
+      });
+    } else {
+      res
+        .status(HttpStatus.CONFLICT)
+        .send(
+          'Invalid Date Occur :Either date is already approved or Employee not apllied leave for that date',
+        );
+    }
   }
 
   //access:admin fetching pending leaves of all employees
@@ -169,7 +196,7 @@ export class UserController {
     return this.userService.viewEmployeePendingLeave(req, status, res);
   }
 
-  //For checking leave status by employee
+  //For fetching employee his own leave status
   @Get('checkStatus')
   async viewOwnLeave(@Req() req, @Res() res) {
     return this.userService.viewOwnLeave(req, res);
@@ -183,7 +210,14 @@ export class UserController {
     @Res() res,
     @Param('email') email: string,
   ) {
-    return this.userService.viewEmployeePendingLeaveByEmail(req, email, res);
+    res.status(200).json({
+      message: `Details of user with email ${email}`,
+      result: await this.userService.viewEmployeePendingLeaveByEmail(
+        req,
+        email,
+        res,
+      ),
+    });
   }
 
   //access:admin soft deleting the user/employee
