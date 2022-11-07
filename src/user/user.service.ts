@@ -13,7 +13,12 @@ import { loginDto } from './dto/login.dto';
 import { forgotDto } from './dto/forgot.dto';
 import { resetDto } from './dto/reset.dto';
 import { UpdateDto } from './dto/update.dto';
-const userProjection = { __v: false, _id: false, email: false };
+const userProjection = {
+  __v: false,
+  _id: false,
+  approveLink: false,
+  rejectLink: false,
+};
 
 @Injectable()
 export class UserService {
@@ -119,7 +124,7 @@ export class UserService {
     });
   }
 
-  public async signout(req, res) {
+  public async signout(req, res): Promise<void> {
     try {
       if (req.cookies['userlogoutcookie'] === undefined) {
         throw new HttpException(
@@ -186,7 +191,7 @@ export class UserService {
     }
   }
 
-  async getEmployeeByEmail(req: any, res: any, Email: string) {
+  async getEmployeeByEmail(req, res, Email: string) {
     try {
       await this.functionVerify(req.cookies['userlogoutcookie']);
       return this.userModel.findOne({ email: Email }).exec();
@@ -202,11 +207,16 @@ export class UserService {
     userDto: UpdateDto,
   ): Promise<void> {
     try {
-      const designationKey = Object.keys(UserDesignation).find(
-        (key) => key === userDto.designation,
-      );
-      if (designationKey === undefined) {
-        throw new HttpException('Designation Not Found', HttpStatus.NOT_FOUND);
+      if (userDto.designation) {
+        const designationKey = Object.keys(UserDesignation).find(
+          (key) => key === userDto.designation,
+        );
+        if (designationKey === undefined) {
+          throw new HttpException(
+            'Designation Not Found',
+            HttpStatus.NOT_FOUND,
+          );
+        }
       }
       await this.functionVerify(req.cookies['userlogoutcookie']);
       const existUser = await this.userModel.findOneAndUpdate(
@@ -287,6 +297,12 @@ export class UserService {
         email: verifyUser.Email,
         leaveDate: newDate.toISOString(),
       });
+      if (leaveExist && leaveExist.rejected === true) {
+        throw new HttpException(
+          `For this date Leave is rejected`,
+          HttpStatus.OK,
+        );
+      }
       if (leaveExist) {
         throw new HttpException(`Leave already exists`, HttpStatus.OK);
       }
@@ -303,7 +319,7 @@ export class UserService {
   async checkEmployeeLeave(req): Promise<leaveDto[]> {
     try {
       await this.functionVerify(req.cookies['userlogoutcookie']);
-      return this.leaveModel.find().exec();
+      return this.leaveModel.find({}, userProjection).exec();
     } catch (error) {
       throw new HttpException(error.message, error.status);
     }
@@ -318,11 +334,22 @@ export class UserService {
       const existUser = await this.leaveModel
         .find({
           status: statusEnum_key,
+          rejected: { $exists: false },
         })
         .exec();
       if (!existUser) {
         throw new HttpException('Invalid User ', HttpStatus.NOT_FOUND);
       }
+      if (Status === 'Pending')
+        for (let i = 0; i < existUser.length; i++) {
+          existUser[
+            i
+          ].approveLink = `http://localhost:3000/user/approveLeaves?leaveDate=${existUser[i].leaveDate}&email=${existUser[i].email}`;
+          existUser[
+            i
+          ].rejectLink = `http://localhost:3000/user/rejectLeaves?leaveDate=${existUser[i].leaveDate}&email=${existUser[i].email}`;
+          existUser[i].save();
+        }
       res.status(200).json({
         message: `Details of user with status ${Status}`,
         result: existUser,
@@ -338,9 +365,12 @@ export class UserService {
         req.cookies['userlogoutcookie'],
       );
       const existUser = await this.leaveModel
-        .find({
-          email: verifyUser.Email,
-        })
+        .find(
+          {
+            email: verifyUser.Email,
+          },
+          userProjection,
+        )
         .exec();
       if (!existUser) {
         throw new HttpException('Invalid User ', HttpStatus.NOT_FOUND);
@@ -354,7 +384,11 @@ export class UserService {
     }
   }
 
-  async viewEmployeePendingLeaveByEmail(req, Email: string, res): Promise<any> {
+  async viewEmployeePendingLeaveByEmail(
+    req,
+    Email: string,
+    res,
+  ): Promise<void> {
     try {
       await this.functionVerify(req.cookies['userlogoutcookie']);
       const existUser = await this.leaveModel
@@ -370,19 +404,22 @@ export class UserService {
         throw new HttpException('Invalid User ', HttpStatus.NOT_FOUND);
       } else if (existUser.length == 0) {
         throw new HttpException(
-          'No Pending leaves or Invalid email',
+          'no Pending leaves or invalid email',
           HttpStatus.NOT_FOUND,
         );
       }
-      return existUser;
+      res.status(200).json({
+        message: `Details of user with email ${Email}`,
+        result: existUser,
+      });
     } catch (error) {
       throw new HttpException(error.message, error.status);
     }
   }
 
-  async approveEmployeeLeave(
+  async approveEmployeeLeaves(
     Email: string,
-    date: string[],
+    date: string,
     res,
     req,
   ): Promise<void> {
@@ -391,17 +428,63 @@ export class UserService {
       const emp = await this.userModel.findOne({
         email: Email,
       });
-      for (let i = 0; i < date.length; i++) {
-        const newDate = new Date(date[i]);
-        const user = await this.leaveModel.findOneAndUpdate(
-          { email: Email, leaveDate: newDate.toISOString(), status: false },
-          { $set: { status: true } },
-        );
-        if (user) {
-          emp.availableLeaves = emp.availableLeaves - 1;
-        }
+      const newDate = new Date(date);
+      const user = await this.leaveModel.findOneAndUpdate(
+        {
+          email: Email,
+          leaveDate: newDate.toISOString(),
+          status: false,
+          approveLink: `http://localhost:3000/user/approveLeaves?leaveDate=${date}&email=${Email}`,
+        },
+        {
+          $set: { status: true },
+          $unset: {
+            approveLink: `http://localhost:3000/user/approveLeaves?leaveDate=${date}&email=${Email}`,
+            rejectLink: `http://localhost:3000/user/rejectLeaves?leaveDate=${date}&email=${Email}`,
+          },
+        },
+      );
+      if (user) {
+        emp.availableLeaves = emp.availableLeaves - 1;
+      } else {
+        throw new HttpException('Link expired', HttpStatus.GONE);
       }
       emp.save();
+    } catch (error) {
+      throw new HttpException(error.message, error.status);
+    }
+  }
+
+  async rejectEmployeeLeaves(
+    Email: string,
+    date: string,
+    res,
+    req,
+  ): Promise<void> {
+    try {
+      await this.functionVerify(req.cookies['userlogoutcookie']);
+
+      const newDate = new Date(date);
+      const user = await this.leaveModel.findOneAndUpdate(
+        {
+          email: Email,
+          leaveDate: newDate.toISOString(),
+          status: false,
+          rejectLink: `http://localhost:3000/user/rejectLeaves?leaveDate=${date}&email=${Email}`,
+        },
+        {
+          $unset: {
+            rejectLink: `http://localhost:3000/user/rejectLeaves?leaveDate=${date}&email=${Email}`,
+            approveLink: `http://localhost:3000/user/approveLeaves?leaveDate=${date}&email=${Email}`,
+          },
+        },
+      );
+      if (user) {
+        user.rejected = true;
+        user.save();
+      } else {
+        throw new HttpException('Link expired', HttpStatus.GONE);
+      }
     } catch (error) {
       throw new HttpException(error.message, error.status);
     }

@@ -54,18 +54,3 @@ export class UserDto {
   })
   readonly availableLeaves: number;
 }
-
-export class EmployeeDto {
-  readonly name: string;
-
-  @IsOptional()
-  @IsEmail({
-    message: 'Enter a valid email address',
-  })
-  readonly email: string;
-  readonly phonenumber: number;
-  readonly address: string;
-
-  @IsEnum(UserDesignation)
-  readonly designation: string;
-}

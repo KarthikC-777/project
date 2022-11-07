@@ -4,4 +4,7 @@ export class leaveDto {
   readonly leaveDate: string;
 
   readonly status: boolean;
+  readonly approveLink: string;
+  readonly rejectLink: string;
+  readonly rejected: boolean;
 }

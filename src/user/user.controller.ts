@@ -141,48 +141,41 @@ export class UserController {
     });
   }
 
-  //access:admin For approving employee leaves Input:["YYYY-MM-DD"...]
-  @Patch('approveLeaves/:email')
+  //access:admin For approving employee leaves
+  @Patch('approveLeaves')
   @Roles(UserRole.Admin)
-  async approveEmployeeLeave(
-    @Body() date: string[],
+  async approveEmployeeLeaves(
     @Res() res,
     @Req() req,
-    @Param('email') Email: string,
+    @Query() query: { leaveDate: string; email: string },
   ) {
-    const existUser = await this.userService.viewEmployeePendingLeaveByEmail(
-      req,
-      Email,
-      res,
-    );
-    let verifyLength = 0;
-    for (let i = 0; i < date.length; i++) {
-      for (let j = 0; j < existUser.length; j++) {
-        if (
-          new Date(date[i]).toISOString() ===
-          new Date(existUser[j]['leaveDate']).toISOString()
-        ) {
-          verifyLength++;
-        }
-      }
-    }
-    if (verifyLength === date.length) {
-      res.status(HttpStatus.CREATED).json({
-        message: `Leave approved successfully`,
-        result: await this.userService.approveEmployeeLeave(
-          Email,
-          date,
-          res,
-          req,
-        ),
-      });
-    } else {
-      res
-        .status(HttpStatus.CONFLICT)
-        .send(
-          'Invalid Date Occur :Either date is already approved or Employee not apllied leave for that date',
-        );
-    }
+    res.status(HttpStatus.CREATED).json({
+      message: `Leave approved successfully for date ${query.leaveDate}`,
+      result: await this.userService.approveEmployeeLeaves(
+        query.email,
+        query.leaveDate,
+        res,
+        req,
+      ),
+    });
+  }
+
+  @Patch('rejectLeaves')
+  @Roles(UserRole.Admin)
+  async rejectEmployeeLeaves(
+    @Res() res,
+    @Req() req,
+    @Query() query: { leaveDate: string; email: string },
+  ) {
+    res.status(HttpStatus.CREATED).json({
+      message: `Leave rejected  for date ${query.leaveDate}`,
+      result: await this.userService.rejectEmployeeLeaves(
+        query.email,
+        query.leaveDate,
+        res,
+        req,
+      ),
+    });
   }
 
   //access:admin fetching pending leaves of all employees
@@ -210,14 +203,7 @@ export class UserController {
     @Res() res,
     @Param('email') email: string,
   ) {
-    res.status(200).json({
-      message: `Details of user with email ${email}`,
-      result: await this.userService.viewEmployeePendingLeaveByEmail(
-        req,
-        email,
-        res,
-      ),
-    });
+    return this.userService.viewEmployeePendingLeaveByEmail(req, email, res);
   }
 
   //access:admin soft deleting the user/employee

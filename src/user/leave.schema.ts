@@ -16,6 +16,12 @@ export class leave {
 
   @Prop({ default: false })
   status: boolean;
+  @Prop()
+  approveLink: string;
+  @Prop()
+  rejectLink: string;
+  @Prop()
+  rejected: boolean;
 }
 
 export const leaveschema = SchemaFactory.createForClass(leave);
