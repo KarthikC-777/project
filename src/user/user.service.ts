@@ -163,9 +163,9 @@ export class UserService {
         { email: body.email },
         { resetToken: resetHash },
       );
-      res.send(
-        `http://localhost:3000/user/reset-password?resetId=${resetHash}`,
-      );
+      res.json({
+        link: `http://localhost:3000/user/reset-password?resetId=${resetHash}`,
+      });
     } catch (error) {
       throw new HttpException(error.message, error.status);
     }
@@ -183,7 +183,7 @@ export class UserService {
             { resetToken: query.resetId },
             { password: newPassword, resetToken: 0 },
           );
-          res.send('password updated successfuly login agin');
+          res.json({ message: 'password updated successfuly login again' });
         },
       );
     } catch (error) {
@@ -282,7 +282,7 @@ export class UserService {
         leaveDto.leaveDate.length < 10
       ) {
         throw new HttpException(
-          ' `leaveDate` must be in the format yyyy/mm/dd',
+          ' `leaveDate` must be in the format yyyy-mm-dd',
           HttpStatus.BAD_REQUEST,
         );
       }
@@ -365,6 +365,31 @@ export class UserService {
         req.cookies['userlogoutcookie'],
       );
       const existUser = await this.leaveModel
+        .find(
+          {
+            email: verifyUser.Email,
+          },
+          userProjection,
+        )
+        .exec();
+      if (!existUser) {
+        throw new HttpException('Invalid User ', HttpStatus.NOT_FOUND);
+      }
+      res.status(HttpStatus.OK).json({
+        message: `Details of user with status ${verifyUser.Email}`,
+        result: existUser,
+      });
+    } catch (error) {
+      throw new HttpException(error.message, error.status);
+    }
+  }
+
+  async viewOwnDetails(req, res): Promise<void> {
+    try {
+      const verifyUser = await this.functionVerify(
+        req.cookies['userlogoutcookie'],
+      );
+      const existUser = await this.userModel
         .find(
           {
             email: verifyUser.Email,
@@ -493,14 +518,19 @@ export class UserService {
   async deactivateEmployee(Email: string, req): Promise<user> {
     try {
       await this.functionVerify(req.cookies['userlogoutcookie']);
-      const existUser = await this.userModel.findOneAndUpdate(
-        { email: Email },
-        { $set: { status: false } },
-      );
-
+      const existUser = await this.userModel.findOne({ email: Email });
       if (!existUser) {
-        throw new HttpException('Invalid User Email', HttpStatus.NOT_FOUND);
+        throw new HttpException('Invalid User Email ', HttpStatus.NOT_FOUND);
       }
+      if (existUser.status === false) {
+        throw new HttpException(
+          'Account is already deactivated ',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      existUser.status = false;
+      existUser.save();
+
       return existUser;
     } catch (error) {
       throw new HttpException(error.message, error.status);
@@ -510,14 +540,19 @@ export class UserService {
   async activateEmployee(Email: string, req): Promise<user> {
     try {
       await this.functionVerify(req.cookies['userlogoutcookie']);
-      const existUser = await this.userModel.findOneAndUpdate(
-        { email: Email },
-        { $set: { status: true } },
-      );
-
+      const existUser = await this.userModel.findOne({ email: Email });
       if (!existUser) {
-        throw new HttpException('Invalid User Email', HttpStatus.NOT_FOUND);
+        throw new HttpException('Invalid User Email ', HttpStatus.NOT_FOUND);
       }
+      if (existUser.status === true) {
+        throw new HttpException(
+          'Account is already active ',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      existUser.status = true;
+      existUser.save();
+
       return existUser;
     } catch (error) {
       throw new HttpException(error.message, error.status);

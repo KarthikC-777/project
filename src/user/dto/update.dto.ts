@@ -27,7 +27,9 @@ export class UpdateDto {
     message: 'Account status cannot be changed',
   })
   readonly status: boolean;
-
+  @Length(2, 30, {
+    message: 'Provide proper address',
+  })
   readonly address: string;
 
   @IsOptional()

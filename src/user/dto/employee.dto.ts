@@ -7,6 +7,8 @@ export class EmployeeDto {
     message: 'Phone Number must be of length 10',
   })
   readonly phonenumber: number;
-
+  @Length(2, 30, {
+    message: 'Provide proper address',
+  })
   readonly address: string;
 }

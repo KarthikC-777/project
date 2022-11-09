@@ -195,6 +195,11 @@ export class UserController {
     return this.userService.viewOwnLeave(req, res);
   }
 
+  @Get('checkOwnDetails')
+  async viewOwnDetails(@Req() req, @Res() res) {
+    return this.userService.viewOwnDetails(req, res);
+  }
+
   //access:admin fetching pending leaves by email
   @Get('viewPendingLeavesOfUser/:email')
   @Roles(UserRole.Admin)
