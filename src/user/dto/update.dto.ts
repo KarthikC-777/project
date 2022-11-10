@@ -4,21 +4,21 @@ import { UserRole } from '../user.schema';
 
 export class UpdateDto {
   @ApiProperty({
-    description:"UserID of the user",
-    example:""
+    description:"User Unique ID",
+    example:"YML001"
   })
   readonly userId: string;
 
   @ApiProperty({
     description:"Name of the user",
-    example:""
+    example:"Dave"
   })
   readonly name: string;
 
 
   @ApiProperty({
     description:"Designation of the user",
-    example:""
+    example:"EM"
   })
   readonly designation: string;
 

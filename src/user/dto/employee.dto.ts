@@ -5,13 +5,13 @@ export class EmployeeDto {
 
   @ApiProperty({
     description:"Name of the user",
-    example:""
+    example:"Dave"
   })
   readonly name: string;
 
   @ApiProperty({
     description:"Phone Number of the user",
-    example:""
+    example:"9000477890"
   })
   @IsOptional()
   @Length(10, 10, {
@@ -20,8 +20,8 @@ export class EmployeeDto {
   readonly phonenumber: number;
 
   @ApiProperty({
-    description:"Adress of the user",
-    example:""
+    description:"Address of the user",
+    example:"California, US"
   })
   @Length(2, 30, {
     message: 'Provide proper address',

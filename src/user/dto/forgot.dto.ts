@@ -5,7 +5,7 @@ export class forgotDto {
 
   @ApiProperty({
     description:"Email of the user",
-    example:""
+    example:"john@email.com"
   })
   @IsEmail({
     message: 'Enter a valid email address',

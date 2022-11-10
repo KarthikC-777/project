@@ -5,7 +5,7 @@ export class leaveDto {
 
   @ApiProperty({
     description:"Date for the leave",
-    example:""
+    example:"2023-10-27"
   })
   readonly leaveDate: string;
   readonly status: boolean;

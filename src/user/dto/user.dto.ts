@@ -17,14 +17,14 @@ export class UserDto {
 
   @ApiProperty({
     description:"Name of the user",
-    example:""
+    example:"John"
   })
   readonly name: string;
 
 
   @ApiProperty({
-    description:"Email adress of the user",
-    example:""
+    description:"Email address of the user",
+    example:"john@email.com"
   })
   @IsEmail({
     message: 'Enter a valid email address',
@@ -34,7 +34,7 @@ export class UserDto {
 
   @ApiProperty({
     description:"Password of the user",
-    example:""
+    example:"Qzw@170.xz"
   })
   @MinLength(8, {
     message: 'Password must have a minimum of 8 characters',
@@ -44,7 +44,7 @@ export class UserDto {
 
   @ApiProperty({
     description:"Phone Number of the user",
-    example:""
+    example:"9000477890"
   })
   @IsOptional()
   @Length(10, 10, {
@@ -55,7 +55,7 @@ export class UserDto {
 
   @ApiProperty({
     description:"Salary of the user",
-    example:""
+    example:"100000"
   })
   @IsOptional()
   @IsNumber()
@@ -69,7 +69,7 @@ export class UserDto {
 
   @ApiProperty({
     description:"Designation of the user",
-    example:""
+    example:"ASE"
   })
   readonly designation: string;
 
@@ -80,8 +80,8 @@ export class UserDto {
   readonly status: boolean;
 
   @ApiProperty({
-    description:"Adress of the user",
-    example:""
+    description:"Address of the user",
+    example:"California, US"
   })
   @Length(2, 30, {
     message: 'Provide proper address',

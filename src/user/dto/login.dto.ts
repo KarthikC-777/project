@@ -5,7 +5,7 @@ export class loginDto {
 
   @ApiProperty({
     description:"Email of the user",
-    example:""
+    example:"dave@email.com"
   })
   @IsEmail({
     message: 'Enter a valid email address',
@@ -15,7 +15,7 @@ export class loginDto {
 
   @ApiProperty({
     description:"Password of the user",
-    example:""
+    example:"Qzw@170.xz"
   })
   @MinLength(8, {
     message: 'Password must have a minimum of 8 characters',
