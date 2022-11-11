@@ -525,7 +525,7 @@ export class UserService {
       if (existUser.status === false) {
         throw new HttpException(
           'Account is already deactivated ',
-          HttpStatus.NOT_FOUND,
+          HttpStatus.FORBIDDEN,
         );
       }
       existUser.status = false;
@@ -547,7 +547,7 @@ export class UserService {
       if (existUser.status === true) {
         throw new HttpException(
           'Account is already active ',
-          HttpStatus.NOT_FOUND,
+          HttpStatus.FORBIDDEN,
         );
       }
       existUser.status = true;
